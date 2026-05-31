@@ -1,891 +1,1367 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ролевой чат-бот</title>
-  <style>
-    :root {
-      --bg: #0b0f17;
-      --bg2: #0f1624;
-      --panel: #121a2a;
-      --panel2: #172033;
-      --line: rgba(255,255,255,0.08);
-      --text: #e9eefb;
-      --muted: #8f9bb8;
-      --accent: #7c5cff;
-      --accent2: #33c7ff;
-      --good: #28d17c;
-      --danger: #ff6b6b;
-      --shadow: 0 18px 50px rgba(0,0,0,0.35);
-      --radius: 22px;
-    }
-
-    * { box-sizing: border-box; }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      background:
-        radial-gradient(circle at top left, rgba(124,92,255,0.17), transparent 30%),
-        radial-gradient(circle at top right, rgba(51,199,255,0.12), transparent 24%),
-        linear-gradient(180deg, #070a10 0%, #0b0f17 100%);
-      color: var(--text);
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    body {
-      min-height: 100vh;
-    }
-
-    .app {
-      min-height: 100vh;
-      display: grid;
-      grid-template-columns: 280px minmax(520px, 1fr) 420px;
-      gap: 16px;
-      padding: 16px;
-    }
-
-    .panel {
-      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-      overflow: hidden;
-    }
-
-    .sidebar {
-      display: grid;
-      grid-template-rows: auto 1fr 1fr;
-      min-height: calc(100vh - 32px);
-    }
-
-    .sidebar-header, .center-header, .chat-header, .auth-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 16px;
-      border-bottom: 1px solid var(--line);
-      background: rgba(255,255,255,0.02);
-    }
-
-    .sidebar-header h2, .center-header h1, .chat-header h2 {
-      margin: 0;
-      font-size: 16px;
-      letter-spacing: 0.2px;
-    }
-
-    .btn {
-      appearance: none;
-      border: 0;
-      border-radius: 14px;
-      padding: 11px 14px;
-      background: linear-gradient(135deg, var(--accent), #5a89ff);
-      color: white;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 10px 28px rgba(124,92,255,0.28);
-      transition: transform 0.15s ease, filter 0.15s ease;
-    }
-
-    .btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
-    .btn.secondary {
-      background: rgba(255,255,255,0.05);
-      color: var(--text);
-      border: 1px solid var(--line);
-      box-shadow: none;
-    }
-
-    .btn.small { padding: 9px 12px; border-radius: 12px; font-size: 13px; }
-
-    .created-list {
-      padding: 12px;
-      overflow: auto;
-    }
-
-    .created-item {
-      display: grid;
-      grid-template-columns: 44px 1fr;
-      gap: 12px;
-      align-items: center;
-      padding: 12px;
-      border-radius: 16px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid transparent;
-      cursor: pointer;
-      margin-bottom: 10px;
-    }
-
-    .created-item:hover, .created-item.active {
-      border-color: rgba(124,92,255,0.36);
-      background: rgba(124,92,255,0.12);
-    }
-
-    .avatar {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      overflow: hidden;
-      flex: 0 0 auto;
-      background: linear-gradient(135deg, rgba(124,92,255,0.8), rgba(51,199,255,0.8));
-      display: grid;
-      place-items: center;
-      font-weight: 800;
-      color: white;
-    }
-
-    .created-item h3 {
-      margin: 0 0 4px;
-      font-size: 14px;
-    }
-
-    .created-item p {
-      margin: 0;
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.35;
-    }
-
-    .stub {
-      display: grid;
-      place-items: center;
-      padding: 18px;
-      color: var(--muted);
-      text-align: center;
-      min-height: 0;
-      border-top: 1px solid var(--line);
-    }
-
-    .stub-inner {
-      width: 100%;
-      height: 100%;
-      border-radius: 18px;
-      border: 1px dashed rgba(255,255,255,0.14);
-      display: grid;
-      place-items: center;
-      padding: 24px;
-      background: rgba(255,255,255,0.015);
-    }
-
-    .stub h3 { margin: 0 0 8px; color: var(--text); font-size: 15px; }
-    .stub p { margin: 0; max-width: 220px; line-height: 1.5; font-size: 13px; }
-
-    .center {
-      display: grid;
-      grid-template-rows: auto auto 1fr;
-      min-height: calc(100vh - 32px);
-    }
-
-    .top-strip {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 16px;
-      border-bottom: 1px solid var(--line);
-      background: rgba(255,255,255,0.02);
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .logo {
-      width: 42px;
-      height: 42px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      box-shadow: 0 12px 28px rgba(124,92,255,0.25);
-    }
-
-    .brand h1 {
-      margin: 0;
-      font-size: 18px;
-    }
-
-    .brand p, .subtitle {
-      margin: 3px 0 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .auth-bar {
-      justify-content: flex-end;
-      gap: 10px;
-    }
-
-    .hero {
-      padding: 18px;
-      border-bottom: 1px solid var(--line);
-      display: grid;
-      gap: 10px;
-    }
-
-    .hero-grid {
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 16px;
-    }
-
-    .hero-card {
-      padding: 18px;
-      border-radius: 20px;
-      border: 1px solid var(--line);
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)),
-        radial-gradient(circle at top right, rgba(124,92,255,0.18), transparent 40%);
-      min-height: 160px;
-    }
-
-    .hero-card h2 {
-      margin: 0 0 8px;
-      font-size: 24px;
-      line-height: 1.15;
-    }
-
-    .hero-card p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.55;
-      max-width: 56ch;
-    }
-
-    .hero-actions {
-      margin-top: 16px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-
-    .stat {
-      border-radius: 18px;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,0.03);
-      padding: 14px;
-    }
-
-    .stat span {
-      display: block;
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .stat strong {
-      font-size: 22px;
-    }
-
-    .cards-area {
-      padding: 16px;
-      overflow: auto;
-    }
-
-    .cards-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-
-    .cards-head h2 {
-      margin: 0;
-      font-size: 16px;
-    }
-
-    .cards-head .subtitle {
-      margin: 4px 0 0;
-    }
-
-    .cards-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 16px;
-    }
-
-    .world-card {
-      border-radius: 24px;
-      border: 1px solid rgba(255,255,255,0.09);
-      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
-      overflow: hidden;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.28);
-      display: flex;
-      flex-direction: column;
-      min-height: 420px;
-    }
-
-    .world-image {
-      aspect-ratio: 3 / 4;
-      width: 100%;
-      object-fit: cover;
-      display: block;
-      background: #111;
-    }
-
-    .world-content {
-      padding: 14px;
-      display: grid;
-      gap: 10px;
-      flex: 1;
-    }
-
-    .chip-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .chip {
-      font-size: 11px;
-      padding: 6px 9px;
-      border-radius: 999px;
-      background: rgba(124,92,255,0.15);
-      border: 1px solid rgba(124,92,255,0.24);
-      color: #d8d1ff;
-    }
-
-    .world-content h3 {
-      margin: 0;
-      font-size: 18px;
-    }
-
-    .world-content p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.55;
-      font-size: 13px;
-    }
-
-    .world-footer {
-      margin-top: auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .meta {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .chat {
-      display: grid;
-      grid-template-rows: auto 1fr auto;
-      min-height: calc(100vh - 32px);
-    }
-
-    .chat-body {
-      padding: 16px;
-      overflow: auto;
-      display: grid;
-      gap: 12px;
-      align-content: start;
-      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0));
-    }
-
-    .chat-note {
-      padding: 14px;
-      border-radius: 18px;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,0.03);
-      color: var(--muted);
-      line-height: 1.45;
-      font-size: 13px;
-    }
-
-    .msg {
-      max-width: 92%;
-      padding: 12px 14px;
-      border-radius: 18px;
-      line-height: 1.5;
-      font-size: 14px;
-      border: 1px solid transparent;
-      white-space: pre-wrap;
-    }
-
-    .msg.bot {
-      background: rgba(255,255,255,0.04);
-      border-color: var(--line);
-      justify-self: start;
-    }
-
-    .msg.user {
-      background: linear-gradient(135deg, rgba(124,92,255,0.25), rgba(51,199,255,0.18));
-      border-color: rgba(124,92,255,0.22);
-      justify-self: end;
-    }
-
-    .composer {
-      padding: 16px;
-      border-top: 1px solid var(--line);
-      background: rgba(255,255,255,0.02);
-      display: grid;
-      gap: 12px;
-    }
-
-    .composer-row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .input, .textarea, select {
-      width: 100%;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.1);
-      background: rgba(6,10,18,0.8);
-      color: var(--text);
-      padding: 12px 14px;
-      font: inherit;
-      outline: none;
-    }
-
-    .input::placeholder, .textarea::placeholder { color: #6e7994; }
-    .textarea { min-height: 120px; resize: vertical; }
-
-    .compose-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .file-field {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .file-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.04);
-      cursor: pointer;
-      color: var(--text);
-      font-size: 13px;
-    }
-
-    .file-label input { display: none; }
-
-    .hint {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.58);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
-      z-index: 40;
-    }
-
-    .modal-backdrop.open { display: flex; }
-
-    .modal {
-      width: min(860px, 100%);
-      border-radius: 28px;
-      border: 1px solid rgba(255,255,255,0.1);
-      background: linear-gradient(180deg, rgba(18,26,42,0.98), rgba(11,15,23,0.98));
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-
-    .modal-header {
-      padding: 18px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .modal-header h2 {
-      margin: 0;
-      font-size: 18px;
-    }
-
-    .modal-body {
-      padding: 20px;
-      display: grid;
-      gap: 16px;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: 180px 1fr;
-      gap: 14px;
-      align-items: start;
-    }
-
-    .form-stack {
-      display: grid;
-      gap: 12px;
-    }
-
-    .preview-box {
-      border-radius: 20px;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,0.03);
-      min-height: 180px;
-      overflow: hidden;
-      display: grid;
-      place-items: center;
-      color: var(--muted);
-      text-align: center;
-      padding: 16px;
-    }
-
-    .preview-box img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: none;
-    }
-
-    .modal-footer {
-      padding: 18px 20px;
-      border-top: 1px solid var(--line);
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .close-x {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      display: inline-grid;
-      place-items: center;
-      cursor: pointer;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,0.04);
-      color: var(--text);
-      font-size: 18px;
-    }
-
-    @media (max-width: 1280px) {
-      .app { grid-template-columns: 260px 1fr; }
-      .chat { grid-column: 2; }
-      .center { grid-column: 2; }
-    }
-
-    @media (max-width: 980px) {
-      .app {
-        grid-template-columns: 1fr;
-      }
-
-      .sidebar, .center, .chat {
-        min-height: auto;
-      }
-
-      .form-grid, .hero-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luminara</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg: #0b0f17;
+  --panel: #121a2a;
+  --line: rgba(255,255,255,.08);
+  --text: #edf1ff;
+  --muted: #8f9bb8;
+  --accent: #7c5cff;
+  --accent2: #4ea2ff;
+  --danger: #ff4e6a;
+  --success: #4eff9e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #070a10;
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+}
+
+button, input { font: inherit; }
+
+.panel {
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+
+/* ─── MAIN VIEW ─── */
+#mainView {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 16px;
+  padding: 16px;
+  height: 100vh;
+}
+
+.sidebar {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+}
+
+.sidebar-title {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.chat-list { padding: 12px; display: grid; gap: 10px; }
+
+.chat-item {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.03);
+  cursor: pointer;
+  transition: background .2s;
+}
+
+.chat-item:hover { background: rgba(124,92,255,.15); }
+
+.main-content {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  overflow: hidden;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.logo {
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #a78bfa, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 0.06em;
+}
+
+.auth { display: flex; gap: 10px; align-items: center; }
+
+/* Language selector */
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.04);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  transition: all .2s;
+  position: relative;
+}
+
+.lang-btn:hover { background: rgba(255,255,255,.08); color: var(--text); }
+
+.lang-flag {
+  width: 16px;
+  height: 12px;
+  display: inline-block;
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* RU flag */
+.flag-ru {
+  background: linear-gradient(180deg, #fff 33.3%, #039 33.3% 66.6%, #c00 66.6%);
+}
+
+/* EN flag */
+.flag-en {
+  background: #012169;
+  position: relative;
+}
+
+.lang-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #131c2e;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px;
+  z-index: 100;
+  min-width: 130px;
+  gap: 4px;
+  flex-direction: column;
+}
+
+.lang-btn:focus-within .lang-dropdown,
+.lang-btn.open .lang-dropdown {
+  display: flex;
+}
+
+.lang-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  transition: all .15s;
+  white-space: nowrap;
+}
+
+.lang-option:hover { background: rgba(255,255,255,.08); color: var(--text); }
+.lang-option.active { color: var(--text); }
+
+.btn {
+  border: none;
+  padding: 10px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  transition: opacity .2s, transform .1s;
+}
+
+.btn:hover { opacity: .9; }
+.btn:active { transform: scale(.97); }
+
+.btn.secondary {
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--line);
+}
+
+.btn.small {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+/* Account icon (shown when logged in) */
+.account-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.05);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s;
+}
+
+.account-btn:hover { background: rgba(124,92,255,.2); color: var(--text); }
+
+.account-btn svg { width: 18px; height: 18px; }
+
+/* ─── SEARCH ─── */
+.search-wrap { padding: 16px; position: relative; }
+
+.search-icon {
+  position: absolute;
+  left: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+}
+
+.search {
+  width: 100%;
+  padding: 14px 14px 14px 44px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #0b1019;
+  color: white;
+  outline: none;
+  transition: border-color .2s;
+}
+
+.search:focus { border-color: rgba(124,92,255,.5); }
+.search::placeholder { color: var(--muted); }
+
+/* ─── FILTERS ─── */
+.filters {
+  display: flex;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+
+.filter {
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.03);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--muted);
+  transition: all .2s;
+  user-select: none;
+}
+
+.filter:hover { background: rgba(255,255,255,.07); color: var(--text); }
+
+.filter.active {
+  background: rgba(124,92,255,.2);
+  border-color: rgba(124,92,255,.4);
+  color: #c4b5fd;
+}
+
+/* ─── CARDS ─── */
+.cards {
+  padding: 0 16px 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+  overflow: auto;
+}
+
+.card {
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(124,92,255,.15);
+}
+
+.card img {
+  width: 100%;
+  height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+.card-body { padding: 12px; }
+.card p { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
+
+/* ─── CHAT VIEW ─── */
+#chatView {
+  display: none;
+  height: 100vh;
+  padding: 16px;
+  gap: 16px;
+  grid-template-columns: 60% 40%;
+}
+
+.left-side {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 16px;
+}
+
+.stub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--muted);
+}
+
+.chat-panel {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.back {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--line);
+  color: white;
+  cursor: pointer;
+  font-size: 22px;
+  transition: background .2s;
+}
+
+.back:hover { background: rgba(255,255,255,.1); }
+
+.chat-sub { font-size: 12px; color: var(--muted); }
+
+.messages {
+  padding: 16px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.msg {
+  padding: 12px;
+  border-radius: 14px;
+  max-width: 80%;
+  line-height: 1.5;
+}
+
+.bot { background: rgba(255,255,255,.05); }
+
+.user {
+  background: rgba(124,92,255,.25);
+  align-self: flex-end;
+}
+
+.inputbar {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.icon-btn {
+  width: 48px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.05);
+  color: white;
+  cursor: pointer;
+  transition: background .2s;
+}
+
+.icon-btn:hover { background: rgba(255,255,255,.1); }
+
+.message-input {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #0b1019;
+  color: white;
+  outline: none;
+}
+
+.message-input:focus { border-color: rgba(124,92,255,.5); }
+
+/* ─── MODAL OVERLAY ─── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  backdrop-filter: blur(6px);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay.open { display: flex; }
+
+.modal {
+  background: #111827;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 32px;
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  animation: modalIn .25s ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(.95) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.05);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s;
+}
+
+.modal-close:hover { color: var(--text); background: rgba(255,255,255,.1); }
+
+.modal-logo {
+  font-family: 'Cinzel', serif;
+  font-size: 22px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #a78bfa, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.modal-sub {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 28px;
+}
+
+.modal-tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(255,255,255,.04);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 24px;
+}
+
+.modal-tab {
+  flex: 1;
+  padding: 9px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all .2s;
+}
+
+.modal-tab.active {
+  background: rgba(124,92,255,.25);
+  color: #c4b5fd;
+}
+
+/* Form fields */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.field label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.field input {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #0b1019;
+  color: var(--text);
+  outline: none;
+  transition: border-color .2s;
+  font-size: 14px;
+}
+
+.field input:focus { border-color: rgba(124,92,255,.5); }
+
+.field input.error { border-color: var(--danger) !important; }
+
+.field-error {
+  font-size: 12px;
+  color: var(--danger);
+  display: none;
+}
+
+.field-error.show { display: block; }
+
+.field-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Password strength bar */
+.strength-bar {
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(255,255,255,.1);
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.strength-fill {
+  height: 100%;
+  border-radius: 99px;
+  width: 0%;
+  transition: width .3s, background .3s;
+}
+
+.btn-full {
+  width: 100%;
+  padding: 13px;
+  border-radius: 14px;
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.modal-footer {
+  text-align: center;
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.modal-footer a {
+  color: #a78bfa;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.modal-footer a:hover { text-decoration: underline; }
+
+/* Feedback messages */
+.alert {
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  margin-bottom: 14px;
+  display: none;
+}
+
+.alert.show { display: block; }
+.alert.success { background: rgba(78,255,158,.1); border: 1px solid rgba(78,255,158,.3); color: #4eff9e; }
+.alert.error   { background: rgba(255,78,106,.1); border: 1px solid rgba(255,78,106,.3); color: #ff4e6a; }
+.alert.info    { background: rgba(124,92,255,.1);  border: 1px solid rgba(124,92,255,.3); color: #a78bfa; }
+
+/* Rate limit notice */
+.rate-notice {
+  font-size: 12px;
+  color: var(--danger);
+  text-align: center;
+  margin-top: 8px;
+  display: none;
+}
+
+.rate-notice.show { display: block; }
+</style>
 </head>
 <body>
-  <div class="app">
-    <aside class="panel sidebar">
-      <div class="sidebar-header">
-        <h2>Созданные чаты</h2>
-        <button class="btn small" id="openWorldModal">+ Создать мир</button>
-      </div>
-      <div class="created-list">
-        <div class="created-item active">
-          <div class="avatar">М</div>
-          <div>
-            <h3>Мир: Туманные земли</h3>
-            <p>Старинные леса, магия и шумные трактиры на границе королевств.</p>
-          </div>
-        </div>
-        <div class="created-item">
-          <div class="avatar">П</div>
-          <div>
-            <h3>Персонаж: Лина</h3>
-            <p>Сдержанная разведчица с холодной улыбкой и опасной памятью.</p>
-          </div>
-        </div>
-        <div class="created-item">
-          <div class="avatar">М</div>
-          <div>
-            <h3>Мир: Пепельный город</h3>
-            <p>Город-крепость, где технологии и древние ритуалы слились воедино.</p>
-          </div>
-        </div>
-      </div>
-      <div class="stub">
-        <div class="stub-inner">
-          <div>
-            <h3>Левая верхняя зона</h3>
-            <p>Заглушка под будущие фильтры, папки, избранное и управление аккаунтом.</p>
-          </div>
-        </div>
-      </div>
-      <div class="stub">
-        <div class="stub-inner">
-          <div>
-            <h3>Левая нижняя зона</h3>
-            <p>Здесь позже можно разместить историю, настройки, инвентарь или быстрые вкладки.</p>
-          </div>
-        </div>
-      </div>
-    </aside>
 
-    <main class="panel center">
-      <div class="top-strip">
-        <div class="brand">
-          <div class="logo"></div>
-          <div>
-            <h1>Миры и персонажи для ролевых чатов</h1>
-            <p>Темная тема, оформление-пустышка, задел под будущий backend.</p>
-          </div>
-        </div>
-        <div class="auth-bar">
-          <button class="btn secondary small">Вход</button>
-          <button class="btn small">Регистрация</button>
-        </div>
-      </div>
+<!-- ═══════════════════════════════════════
+     MAIN VIEW
+════════════════════════════════════════ -->
+<div id="mainView">
 
-      <section class="hero">
-        <div class="hero-grid">
-          <div class="hero-card">
-            <h2>Платформа для ролевых игр с чат-ботом</h2>
-            <p>Создавай миры и персонажей, прикрепляй изображения, а сам диалог позже подключится к бэкэнду. Сейчас здесь аккуратный визуальный прототип с пустыми местами под будущую логику.</p>
-            <div class="hero-actions">
-              <button class="btn" id="openWorldModal2">Создать мир</button>
-              <button class="btn secondary">Открыть чат</button>
-              <button class="btn secondary">Избранное</button>
-            </div>
-          </div>
-          <div class="stats">
-            <div class="stat">
-              <span>Шаблоны</span>
-              <strong>12</strong>
-            </div>
-            <div class="stat">
-              <span>Аккаунт</span>
-              <strong>—</strong>
-            </div>
-            <div class="stat">
-              <span>Чаты</span>
-              <strong>3</strong>
-            </div>
-            <div class="stat">
-              <span>Состояние</span>
-              <strong>Demo</strong>
-            </div>
-          </div>
-        </div>
-      </section>
+  <aside class="panel sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title" data-i18n="chats">Чаты</span>
+      <button class="btn small" data-i18n="createWorld">+ Создать мир</button>
+    </div>
+    <div class="chat-list">
+      <div class="chat-item" onclick="openChat('Туманные земли')">Туманные земли</div>
+      <div class="chat-item" onclick="openChat('Лина')">Лина</div>
+    </div>
+  </aside>
 
-      <section class="cards-area">
-        <div class="cards-head">
-          <div>
-            <h2>Предлагаемые чаты</h2>
-            <div class="subtitle">Вертикальные карточки с изображением, названием и описанием.</div>
+  <main class="panel main-content">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="logo">Luminara</div>
+      <div class="auth" id="authArea">
+
+        <!-- Language selector -->
+        <div class="lang-btn" id="langBtn" onclick="toggleLangMenu(event)">
+          <span class="lang-flag flag-ru" id="currentFlag"></span>
+          <span id="currentLangLabel">RU</span>
+          <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <div class="lang-dropdown" id="langDropdown">
+            <div class="lang-option active" data-lang="ru" onclick="setLang('ru', event)">
+              <span class="lang-flag flag-ru"></span> Русский
+            </div>
+            <div class="lang-option" data-lang="en" onclick="setLang('en', event)">
+              <span class="lang-flag flag-en"></span> English
+            </div>
+            <!-- задел на будущее -->
+            <!-- <div class="lang-option" data-lang="de">🇩🇪 Deutsch</div> -->
           </div>
-          <button class="btn secondary small">Сортировка</button>
         </div>
 
-        <div class="cards-grid">
-          <article class="world-card">
-            <img class="world-image" src="https://images.unsplash.com/photo-1518709268805-4e9042af2176?auto=format&fit=crop&w=900&q=80" alt="Мир" />
-            <div class="world-content">
-              <div class="chip-row">
-                <span class="chip">Мир</span>
-                <span class="chip">Фэнтези</span>
-              </div>
-              <h3>Туманные земли</h3>
-              <p>Северные леса, древние руины и дороги, которые меняют маршрут по ночам.</p>
-              <div class="world-footer">
-                <span class="meta">Подходит для приключений</span>
-                <button class="btn small">Открыть</button>
-              </div>
-            </div>
-          </article>
+        <button class="btn secondary" id="loginBtn" onclick="openModal('login')" data-i18n="login">Вход</button>
+        <button class="btn" id="registerBtn" onclick="openModal('register')" data-i18n="register">Регистрация</button>
 
-          <article class="world-card">
-            <img class="world-image" src="https://images.unsplash.com/photo-1501612780327-45045538702b?auto=format&fit=crop&w=900&q=80" alt="Персонаж" />
-            <div class="world-content">
-              <div class="chip-row">
-                <span class="chip">Персонаж</span>
-                <span class="chip">Драма</span>
-              </div>
-              <h3>Лина</h3>
-              <p>Разведчица, которая знает больше, чем говорит, и всегда держит запасной план.</p>
-              <div class="world-footer">
-                <span class="meta">NPC / напарник</span>
-                <button class="btn small">Открыть</button>
-              </div>
-            </div>
-          </article>
-
-          <article class="world-card">
-            <img class="world-image" src="https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=900&q=80" alt="Мир" />
-            <div class="world-content">
-              <div class="chip-row">
-                <span class="chip">Мир</span>
-                <span class="chip">Sci‑fi</span>
-              </div>
-              <h3>Пепельный город</h3>
-              <p>Неон, пар и старые легенды в мире, где магия встроена в механизмы.</p>
-              <div class="world-footer">
-                <span class="meta">Технологии и тайны</span>
-                <button class="btn small">Открыть</button>
-              </div>
-            </div>
-          </article>
-
-          <article class="world-card">
-            <img class="world-image" src="https://images.unsplash.com/photo-1471047283799-2d700ff6df66?auto=format&fit=crop&w=900&q=80" alt="Персонаж" />
-            <div class="world-content">
-              <div class="chip-row">
-                <span class="chip">Персонаж</span>
-                <span class="chip">Мистика</span>
-              </div>
-              <h3>Арден</h3>
-              <p>Молчаливый маг, который предпочитает делать выводы по одному жесту и одному взгляду.</p>
-              <div class="world-footer">
-                <span class="meta">Характерный собеседник</span>
-                <button class="btn small">Открыть</button>
-              </div>
-            </div>
-          </article>
-        </div>
-      </section>
-    </main>
-
-    <section class="panel chat">
-      <div class="chat-header">
-        <div>
-          <h2>Чат</h2>
-          <div class="subtitle">Пока заглушка под будущую логику бота и сценарии диалогов.</div>
-        </div>
-        <button class="btn secondary small">Очистить</button>
-      </div>
-      <div class="chat-body">
-        <div class="chat-note">Правая часть экрана отведена под чат. Позже здесь появятся сообщения, выбор реплик, статус мира и управление сценой.</div>
-        <div class="msg bot">Здравствуйте. Я готов вести сюжет, когда подключится бэкэнд.</div>
-        <div class="msg user">Хочу открыть мир с персонажем и начать диалог.</div>
-        <div class="msg bot">Отлично. Сейчас это только визуальная оболочка с заделом на полноценную систему аккаунтов и сохранение прогресса.</div>
-      </div>
-      <div class="composer">
-        <div class="composer-row">
-          <input class="input" type="text" placeholder="Введите сообщение..." />
-          <button class="btn">Отправить</button>
-        </div>
-        <div class="compose-actions">
-          <div class="file-field">
-            <label class="file-label">
-              <input type="file" accept="image/*" multiple id="chatFiles" />
-              Прикрепить файл
-            </label>
-            <span class="hint">Для будущих изображений, реплик и артов сцены.</span>
-          </div>
-          <button class="btn secondary">Сохранить черновик</button>
-        </div>
-      </div>
-    </section>
-  </div>
-
-  <div class="modal-backdrop" id="worldModal">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>Создать мир</h2>
-        <button class="close-x" id="closeWorldModal">×</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-grid">
-          <div class="preview-box" id="previewBox">
-            <img id="previewImage" alt="Предпросмотр" />
-            <div id="previewText">Предпросмотр изображения появится здесь</div>
-          </div>
-          <div class="form-stack">
-            <select class="input" id="worldType">
-              <option value="world">Мир</option>
-              <option value="character">Персонаж</option>
-            </select>
-            <input class="input" type="text" id="worldName" placeholder="Название" />
-            <textarea class="textarea" id="worldDescription" placeholder="Описание"></textarea>
-            <label class="file-label" style="width: fit-content;">
-              <input type="file" accept="image/*" id="worldImage" />
-              Прикрепить изображения
-            </label>
-            <div class="hint">Можно добавить одно или несколько изображений позже, когда будет подключена логика сохранения.</div>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn secondary" id="cancelWorld">Отмена</button>
-        <button class="btn" id="saveWorld">Создать</button>
+        <!-- Shown after login -->
+        <button class="account-btn" id="accountBtn" style="display:none" onclick="openModal('account')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+          </svg>
+        </button>
       </div>
     </div>
+
+    <!-- SEARCH -->
+    <div class="search-wrap">
+      <span class="search-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="6.5" cy="6.5" r="5"/>
+          <line x1="10.5" y1="10.5" x2="14" y2="14"/>
+        </svg>
+      </span>
+      <input class="search" id="searchInput" data-i18n-placeholder="searchPlaceholder" placeholder="Поиск миров и персонажей...">
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filters">
+      <div class="filter active" data-filter="top"       onclick="setFilter(this)" data-i18n="filterTop">Топ</div>
+      <div class="filter"        data-filter="relevant"  onclick="setFilter(this)" data-i18n="filterRelevant">Релевантные</div>
+      <div class="filter"        data-filter="mine"      onclick="setFilter(this)" data-i18n="filterMine">Мои</div>
+    </div>
+
+    <!-- CARDS -->
+    <div class="cards" id="cardsContainer">
+      <div class="panel card" onclick="openChat('Туманные земли')">
+        <img src="https://picsum.photos/500/700?1" alt="Туманные земли">
+        <div class="card-body">
+          <h3>Туманные земли</h3>
+          <p data-i18n="card1desc">Фэнтезийный мир приключений.</p>
+        </div>
+      </div>
+      <div class="panel card" onclick="openChat('Лина')">
+        <img src="https://picsum.photos/500/700?2" alt="Лина">
+        <div class="card-body">
+          <h3>Лина</h3>
+          <p data-i18n="card2desc">Персонаж для сюжетных игр.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════
+     CHAT VIEW
+════════════════════════════════════════ -->
+<div id="chatView">
+  <div class="left-side">
+    <div class="panel stub">Блок 1</div>
+    <div class="panel stub">Блок 2</div>
   </div>
+  <div class="panel chat-panel">
+    <div class="chat-header">
+      <button class="back" onclick="closeChat()">←</button>
+      <div>
+        <div id="chatTitle"><b>Чат</b></div>
+        <div class="chat-sub" data-i18n="chatSub">Персонаж • Онлайн</div>
+      </div>
+    </div>
+    <div class="messages">
+      <div class="msg bot" data-i18n="chatPlaceholder">Чат подключится к backend позже.</div>
+    </div>
+    <div class="inputbar">
+      <button class="icon-btn">📎</button>
+      <input class="message-input" data-i18n-placeholder="messagePlaceholder" placeholder="Сообщение...">
+      <button class="icon-btn">✈</button>
+    </div>
+  </div>
+</div>
 
-  <script>
-    const modal = document.getElementById('worldModal');
-    const openButtons = [document.getElementById('openWorldModal'), document.getElementById('openWorldModal2')];
-    const closeButton = document.getElementById('closeWorldModal');
-    const cancelButton = document.getElementById('cancelWorld');
-    const worldImage = document.getElementById('worldImage');
-    const previewImage = document.getElementById('previewImage');
-    const previewText = document.getElementById('previewText');
+<!-- ═══════════════════════════════════════
+     AUTH MODAL
+════════════════════════════════════════ -->
+<div class="overlay" id="authOverlay" onclick="overlayClickClose(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-logo">Luminara</div>
+    <div class="modal-sub" id="modalSub">Добро пожаловать</div>
 
-    function openModal() {
-      modal.classList.add('open');
+    <!-- Tabs: login / register / reset -->
+    <div class="modal-tabs" id="modalTabs">
+      <button class="modal-tab active" id="tabLogin"    onclick="switchTab('login')"    data-i18n="login">Вход</button>
+      <button class="modal-tab"        id="tabRegister" onclick="switchTab('register')" data-i18n="register">Регистрация</button>
+    </div>
+
+    <!-- Global alert -->
+    <div class="alert" id="modalAlert"></div>
+
+    <!-- ── LOGIN FORM ── -->
+    <div id="formLogin">
+      <div class="field">
+        <label data-i18n="email">Email</label>
+        <input type="email" id="loginEmail" autocomplete="email" data-i18n-placeholder="emailPlaceholder" placeholder="you@example.com">
+        <span class="field-error" id="loginEmailErr"></span>
+      </div>
+      <div class="field">
+        <label data-i18n="password">Пароль</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" placeholder="••••••••">
+        <span class="field-error" id="loginPassErr"></span>
+      </div>
+      <div style="text-align:right;margin-bottom:4px">
+        <a style="font-size:12px;color:#a78bfa;cursor:pointer" onclick="switchTab('reset')" data-i18n="forgotPass">Забыли пароль?</a>
+      </div>
+      <div class="rate-notice" id="loginRateNotice"></div>
+      <button class="btn btn-full" onclick="doLogin()" data-i18n="loginBtn">Войти</button>
+      <div class="modal-footer">
+        <span data-i18n="noAccount">Нет аккаунта?</span>
+        <a onclick="switchTab('register')" data-i18n="registerLink"> Зарегистрироваться</a>
+      </div>
+    </div>
+
+    <!-- ── REGISTER FORM ── -->
+    <div id="formRegister" style="display:none">
+      <div class="field">
+        <label data-i18n="email">Email</label>
+        <input type="email" id="regEmail" autocomplete="email" placeholder="you@example.com">
+        <span class="field-error" id="regEmailErr"></span>
+      </div>
+      <div class="field">
+        <label data-i18n="password">Пароль</label>
+        <input type="password" id="regPassword" autocomplete="new-password" placeholder="••••••••" oninput="updateStrength()">
+        <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+        <span class="field-hint" id="strengthLabel" style="margin-top:4px"></span>
+        <span class="field-error" id="regPassErr"></span>
+      </div>
+      <div class="field">
+        <label data-i18n="confirmPassword">Подтверждение пароля</label>
+        <input type="password" id="regPassword2" autocomplete="new-password" placeholder="••••••••">
+        <span class="field-error" id="regPass2Err"></span>
+      </div>
+      <button class="btn btn-full" onclick="doRegister()" data-i18n="registerBtn">Создать аккаунт</button>
+      <div class="modal-footer">
+        <span data-i18n="hasAccount">Уже есть аккаунт?</span>
+        <a onclick="switchTab('login')" data-i18n="loginLink"> Войти</a>
+      </div>
+    </div>
+
+    <!-- ── RESET FORM ── -->
+    <div id="formReset" style="display:none">
+      <div class="field">
+        <label data-i18n="email">Email</label>
+        <input type="email" id="resetEmail" placeholder="you@example.com">
+        <span class="field-error" id="resetEmailErr"></span>
+      </div>
+      <button class="btn btn-full" onclick="doReset()" data-i18n="resetBtn">Отправить ссылку</button>
+      <div class="modal-footer">
+        <a onclick="switchTab('login')" data-i18n="backToLogin">← Назад к входу</a>
+      </div>
+    </div>
+
+    <!-- ── VERIFY NOTICE ── -->
+    <div id="formVerify" style="display:none;text-align:center">
+      <div style="font-size:48px;margin-bottom:16px">📬</div>
+      <div style="font-weight:600;margin-bottom:8px" data-i18n="verifyTitle">Проверьте почту</div>
+      <div style="color:var(--muted);font-size:13px;margin-bottom:20px" data-i18n="verifyText">
+        Мы отправили письмо с подтверждением. Перейдите по ссылке в письме.
+      </div>
+      <button class="btn btn-full secondary" onclick="closeModal()" data-i18n="gotIt">Понятно</button>
+    </div>
+
+    <!-- ── ACCOUNT PANEL ── -->
+    <div id="formAccount" style="display:none;text-align:center">
+      <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#7c5cff,#4ea2ff);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      </div>
+      <div style="font-weight:600;margin-bottom:4px" id="accountEmail"></div>
+      <div style="color:var(--muted);font-size:12px;margin-bottom:24px" data-i18n="loggedIn">Вы вошли в систему</div>
+      <button class="btn btn-full secondary" onclick="doLogout()" data-i18n="logout">Выйти из аккаунта</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCRIPT
+════════════════════════════════════════ -->
+<script>
+/* ────────────────────────────────────────
+   i18n
+──────────────────────────────────────── */
+const TRANSLATIONS = {
+  ru: {
+    chats: 'Чаты',
+    createWorld: '+ Создать мир',
+    login: 'Вход',
+    register: 'Регистрация',
+    searchPlaceholder: 'Поиск миров и персонажей...',
+    filterTop: 'Топ',
+    filterRelevant: 'Релевантные',
+    filterMine: 'Мои',
+    card1desc: 'Фэнтезийный мир приключений.',
+    card2desc: 'Персонаж для сюжетных игр.',
+    chatSub: 'Персонаж • Онлайн',
+    chatPlaceholder: 'Чат подключится к backend позже.',
+    messagePlaceholder: 'Сообщение...',
+    email: 'Email',
+    emailPlaceholder: 'you@example.com',
+    password: 'Пароль',
+    confirmPassword: 'Подтверждение пароля',
+    forgotPass: 'Забыли пароль?',
+    loginBtn: 'Войти',
+    noAccount: 'Нет аккаунта?',
+    registerLink: ' Зарегистрироваться',
+    registerBtn: 'Создать аккаунт',
+    hasAccount: 'Уже есть аккаунт?',
+    loginLink: ' Войти',
+    resetBtn: 'Отправить ссылку',
+    backToLogin: '← Назад к входу',
+    verifyTitle: 'Проверьте почту',
+    verifyText: 'Мы отправили письмо с подтверждением. Перейдите по ссылке в письме.',
+    gotIt: 'Понятно',
+    loggedIn: 'Вы вошли в систему',
+    logout: 'Выйти из аккаунта',
+    welcome: 'Добро пожаловать',
+    strength0: '',
+    strength1: 'Слабый пароль',
+    strength2: 'Средний пароль',
+    strength3: 'Хороший пароль',
+    strength4: 'Надёжный пароль',
+    errEmailInvalid: 'Введите корректный email',
+    errEmailTaken: 'Этот email уже зарегистрирован',
+    errEmailNotFound: 'Аккаунт не найден',
+    errPassShort: 'Минимум 8 символов',
+    errPassMismatch: 'Пароли не совпадают',
+    errPassWrong: 'Неверный пароль',
+    errNotVerified: 'Подтвердите email перед входом',
+    errRateLimit: 'Слишком много попыток. Подождите {s} сек.',
+    msgResetSent: 'Письмо с инструкциями отправлено на {email}',
+    msgRegOk: 'Аккаунт создан! Подтвердите email.',
+  },
+  en: {
+    chats: 'Chats',
+    createWorld: '+ Create World',
+    login: 'Login',
+    register: 'Sign Up',
+    searchPlaceholder: 'Search worlds and characters...',
+    filterTop: 'Top',
+    filterRelevant: 'Relevant',
+    filterMine: 'Mine',
+    card1desc: 'A fantasy world of adventures.',
+    card2desc: 'A character for narrative games.',
+    chatSub: 'Character • Online',
+    chatPlaceholder: 'Chat will connect to backend later.',
+    messagePlaceholder: 'Message...',
+    email: 'Email',
+    emailPlaceholder: 'you@example.com',
+    password: 'Password',
+    confirmPassword: 'Confirm Password',
+    forgotPass: 'Forgot password?',
+    loginBtn: 'Login',
+    noAccount: "Don't have an account?",
+    registerLink: ' Sign up',
+    registerBtn: 'Create Account',
+    hasAccount: 'Already have an account?',
+    loginLink: ' Login',
+    resetBtn: 'Send Reset Link',
+    backToLogin: '← Back to Login',
+    verifyTitle: 'Check your inbox',
+    verifyText: 'We sent a confirmation email. Click the link inside.',
+    gotIt: 'Got it',
+    loggedIn: 'You are logged in',
+    logout: 'Log Out',
+    welcome: 'Welcome',
+    strength0: '',
+    strength1: 'Weak password',
+    strength2: 'Fair password',
+    strength3: 'Good password',
+    strength4: 'Strong password',
+    errEmailInvalid: 'Enter a valid email',
+    errEmailTaken: 'This email is already registered',
+    errEmailNotFound: 'Account not found',
+    errPassShort: 'Minimum 8 characters',
+    errPassMismatch: "Passwords don't match",
+    errPassWrong: 'Wrong password',
+    errNotVerified: 'Please verify your email before logging in',
+    errRateLimit: 'Too many attempts. Wait {s} sec.',
+    msgResetSent: 'Reset instructions sent to {email}',
+    msgRegOk: 'Account created! Please verify your email.',
+  }
+};
+
+let currentLang = localStorage.getItem('luminara_lang') || 'ru';
+
+function t(key, vars) {
+  let s = (TRANSLATIONS[currentLang] || TRANSLATIONS.ru)[key] || key;
+  if (vars) Object.keys(vars).forEach(k => { s = s.replace('{' + k + '}', vars[k]); });
+  return s;
+}
+
+function applyLang() {
+  // text nodes
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.textContent = t(key);
+  });
+  // placeholders
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+  });
+  // flag
+  const flag = document.getElementById('currentFlag');
+  flag.className = 'lang-flag ' + (currentLang === 'ru' ? 'flag-ru' : 'flag-en');
+  document.getElementById('currentLangLabel').textContent = currentLang.toUpperCase();
+
+  // mark active lang option
+  document.querySelectorAll('.lang-option').forEach(el => {
+    el.classList.toggle('active', el.dataset.lang === currentLang);
+  });
+}
+
+function setLang(lang, e) {
+  if (e) e.stopPropagation();
+  currentLang = lang;
+  localStorage.setItem('luminara_lang', lang);
+  applyLang();
+  closeLangMenu();
+}
+
+function toggleLangMenu(e) {
+  e.stopPropagation();
+  document.getElementById('langBtn').classList.toggle('open');
+}
+
+function closeLangMenu() {
+  document.getElementById('langBtn').classList.remove('open');
+}
+
+document.addEventListener('click', () => closeLangMenu());
+
+/* ────────────────────────────────────────
+   FILTERS
+──────────────────────────────────────── */
+let currentFilter = 'top';
+
+function setFilter(el) {
+  document.querySelectorAll('.filter').forEach(f => f.classList.remove('active'));
+  el.classList.add('active');
+  currentFilter = el.dataset.filter;
+
+  /*
+   * ЗАDЕЛ НА БУДУЩЕЕ:
+   * Здесь будет вызов fetchCards(currentFilter)
+   * который загрузит карточки с сервера по выбранному фильтру.
+   *
+   * if (currentFilter === 'mine' && !currentUser) {
+   *   openModal('login'); return;
+   * }
+   * fetchCards(currentFilter);
+   */
+
+  // пока — визуальная реакция
+  console.log('[Luminara] filter =', currentFilter);
+}
+
+/* ────────────────────────────────────────
+   "БАЗА ДАННЫХ" (localStorage — заглушка для frontend-демо)
+   На реальном бэкенде заменяется на API-вызовы.
+──────────────────────────────────────── */
+function db() {
+  return JSON.parse(localStorage.getItem('luminara_db') || '{"users":{}}');
+}
+function saveDb(data) {
+  localStorage.setItem('luminara_db', JSON.stringify(data));
+}
+
+/* ────────────────────────────────────────
+   BRUTE-FORCE PROTECTION
+   Хранит попытки входа по email в sessionStorage.
+   На бэкенде — Redis / DB с TTL.
+──────────────────────────────────────── */
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS   = 30_000; // 30 секунд
+
+function getAttempts(email) {
+  return JSON.parse(sessionStorage.getItem('bf_' + email) || '{"count":0,"until":0}');
+}
+
+function recordAttempt(email) {
+  const a = getAttempts(email);
+  a.count++;
+  if (a.count >= MAX_ATTEMPTS) a.until = Date.now() + LOCKOUT_MS;
+  sessionStorage.setItem('bf_' + email, JSON.stringify(a));
+  return a;
+}
+
+function resetAttempts(email) {
+  sessionStorage.removeItem('bf_' + email);
+}
+
+function checkLocked(email) {
+  const a = getAttempts(email);
+  if (a.until && Date.now() < a.until) {
+    return Math.ceil((a.until - Date.now()) / 1000);
+  }
+  return 0;
+}
+
+/* ────────────────────────────────────────
+   SESSION
+──────────────────────────────────────── */
+let currentUser = JSON.parse(localStorage.getItem('luminara_user') || 'null');
+
+function saveSession(user) {
+  currentUser = user;
+  localStorage.setItem('luminara_user', JSON.stringify(user));
+}
+
+function clearSession() {
+  currentUser = null;
+  localStorage.removeItem('luminara_user');
+}
+
+function updateAuthUI() {
+  const isIn = !!currentUser;
+  document.getElementById('loginBtn').style.display    = isIn ? 'none' : '';
+  document.getElementById('registerBtn').style.display = isIn ? 'none' : '';
+  document.getElementById('accountBtn').style.display  = isIn ? '' : 'none';
+}
+
+/* ────────────────────────────────────────
+   MODAL
+──────────────────────────────────────── */
+function openModal(mode) {
+  document.getElementById('authOverlay').classList.add('open');
+  document.getElementById('modalTabs').style.display = 'flex';
+  clearAlert();
+
+  if (mode === 'account') {
+    showForm('account');
+    document.getElementById('accountEmail').textContent = currentUser?.email || '';
+    document.getElementById('modalSub').textContent = '';
+    document.getElementById('modalTabs').style.display = 'none';
+  } else {
+    switchTab(mode || 'login');
+  }
+}
+
+function closeModal() {
+  document.getElementById('authOverlay').classList.remove('open');
+}
+
+function overlayClickClose(e) {
+  if (e.target === document.getElementById('authOverlay')) closeModal();
+}
+
+function showForm(name) {
+  ['login','register','reset','verify','account'].forEach(f => {
+    document.getElementById('formLogin'.replace('login', f === 'login' ? 'Login' : '') ||
+      ('form' + f.charAt(0).toUpperCase() + f.slice(1))).style.display = 'none';
+  });
+
+  // easier:
+  document.getElementById('formLogin').style.display    = name === 'login'    ? '' : 'none';
+  document.getElementById('formRegister').style.display = name === 'register' ? '' : 'none';
+  document.getElementById('formReset').style.display    = name === 'reset'    ? '' : 'none';
+  document.getElementById('formVerify').style.display   = name === 'verify'   ? '' : 'none';
+  document.getElementById('formAccount').style.display  = name === 'account'  ? '' : 'none';
+}
+
+function switchTab(tab) {
+  clearAlert();
+  clearErrors();
+  const tabs = { login: 'tabLogin', register: 'tabRegister' };
+  document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+  if (tabs[tab]) document.getElementById(tabs[tab]).classList.add('active');
+
+  const subs = { login: t('welcome'), register: t('welcome'), reset: '' };
+  document.getElementById('modalSub').textContent = subs[tab] ?? '';
+  document.getElementById('modalTabs').style.display = (tab === 'reset') ? 'none' : 'flex';
+  showForm(tab);
+}
+
+/* ────────────────────────────────────────
+   VALIDATION HELPERS
+──────────────────────────────────────── */
+function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+function setErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.toggle('show', !!msg);
+  const inp = el.previousElementSibling;
+  if (inp && inp.tagName === 'INPUT') inp.classList.toggle('error', !!msg);
+}
+
+function clearErrors() {
+  document.querySelectorAll('.field-error').forEach(e => {
+    e.textContent = ''; e.classList.remove('show');
+  });
+  document.querySelectorAll('input.error').forEach(e => e.classList.remove('error'));
+}
+
+function showAlert(type, msg) {
+  const el = document.getElementById('modalAlert');
+  el.className = 'alert ' + type + ' show';
+  el.textContent = msg;
+}
+
+function clearAlert() {
+  const el = document.getElementById('modalAlert');
+  el.className = 'alert';
+  el.textContent = '';
+}
+
+/* ────────────────────────────────────────
+   PASSWORD STRENGTH
+──────────────────────────────────────── */
+function scorePassword(p) {
+  let s = 0;
+  if (p.length >= 8)  s++;
+  if (p.length >= 12) s++;
+  if (/[A-Z]/.test(p) && /[a-z]/.test(p)) s++;
+  if (/\d/.test(p)) s++;
+  if (/[^A-Za-z0-9]/.test(p)) s++;
+  return Math.min(4, Math.floor(s * 0.9));
+}
+
+function updateStrength() {
+  const p = document.getElementById('regPassword').value;
+  const score = p ? scorePassword(p) : 0;
+  const colors = ['', '#ff4e6a', '#f59e0b', '#4ea2ff', '#4eff9e'];
+  const fill = document.getElementById('strengthFill');
+  fill.style.width = (score * 25) + '%';
+  fill.style.background = colors[score] || 'transparent';
+  document.getElementById('strengthLabel').textContent = t('strength' + score);
+}
+
+/* ────────────────────────────────────────
+   AUTH ACTIONS
+──────────────────────────────────────── */
+
+// REGISTER
+function doRegister() {
+  clearErrors();
+  clearAlert();
+
+  const email = document.getElementById('regEmail').value.trim();
+  const pass1  = document.getElementById('regPassword').value;
+  const pass2  = document.getElementById('regPassword2').value;
+  let ok = true;
+
+  if (!validEmail(email)) { setErr('regEmailErr', t('errEmailInvalid')); ok = false; }
+  if (pass1.length < 8)   { setErr('regPassErr',  t('errPassShort'));   ok = false; }
+  if (pass1 !== pass2)    { setErr('regPass2Err', t('errPassMismatch')); ok = false; }
+  if (!ok) return;
+
+  const data = db();
+  if (data.users[email]) { setErr('regEmailErr', t('errEmailTaken')); return; }
+
+  /*
+   * ── ЗАDЕЛ НА БЭКЕНД ──
+   * POST /api/register  { email, password }
+   * Сервер: хешировать пароль (bcrypt), сохранить в SQL,
+   * сгенерировать токен подтверждения, отправить письмо (SendGrid / SES).
+   *
+   * Ответ 200 → показать formVerify
+   * Ответ 409 → setErr('regEmailErr', 'Email уже занят')
+   */
+
+  // Frontend-заглушка: храним {hash: pass (⚠ незашифровано — только для демо!), verified: false}
+  data.users[email] = {
+    passwordHash: pass1,   // ⚠ на бэкенде — bcrypt/argon2
+    verified: false,       // на бэкенде = false до перехода по ссылке
+    createdAt: Date.now()
+  };
+  saveDb(data);
+
+  // Имитация: автоверификация через 2 сек (в реале — клик по письму)
+  setTimeout(() => {
+    const d = db();
+    if (d.users[email]) { d.users[email].verified = true; saveDb(d); }
+  }, 2000);
+
+  showForm('verify');
+  document.getElementById('modalTabs').style.display = 'none';
+}
+
+// LOGIN
+function doLogin() {
+  clearErrors();
+  clearAlert();
+
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPassword').value;
+  let ok = true;
+
+  if (!validEmail(email)) { setErr('loginEmailErr', t('errEmailInvalid')); ok = false; }
+  if (!pass)               { setErr('loginPassErr',  t('errPassShort'));    ok = false; }
+  if (!ok) return;
+
+  // Brute-force check
+  const secs = checkLocked(email);
+  if (secs > 0) {
+    const notice = document.getElementById('loginRateNotice');
+    notice.textContent = t('errRateLimit', { s: secs });
+    notice.classList.add('show');
+    return;
+  }
+  document.getElementById('loginRateNotice').classList.remove('show');
+
+  /*
+   * ── ЗАDЕЛ НА БЭКЕНД ──
+   * POST /api/login  { email, password }
+   * Сервер: найти пользователя, bcrypt.compare, вернуть JWT / сессионный cookie.
+   * Rate-limit: проверять на сервере (Redis), не только на клиенте.
+   *
+   * Ответ 200 { token, user } → saveSession, updateAuthUI, closeModal
+   * Ответ 401 → showAlert('error', ...)
+   * Ответ 429 → показать время блокировки
+   */
+
+  const data = db();
+  const user = data.users[email];
+
+  if (!user) {
+    recordAttempt(email);
+    setErr('loginEmailErr', t('errEmailNotFound'));
+    return;
+  }
+  if (!user.verified) {
+    showAlert('info', t('errNotVerified'));
+    return;
+  }
+  if (user.passwordHash !== pass) {   // ⚠ на бэкенде bcrypt.compare
+    const a = recordAttempt(email);
+    setErr('loginPassErr', t('errPassWrong'));
+    if (a.count >= MAX_ATTEMPTS) {
+      const notice = document.getElementById('loginRateNotice');
+      notice.textContent = t('errRateLimit', { s: Math.ceil(LOCKOUT_MS / 1000) });
+      notice.classList.add('show');
     }
+    return;
+  }
 
-    function closeModal() {
-      modal.classList.remove('open');
-    }
+  resetAttempts(email);
+  saveSession({ email });
+  updateAuthUI();
+  closeModal();
+}
 
-    openButtons.forEach(btn => btn.addEventListener('click', openModal));
-    closeButton.addEventListener('click', closeModal);
-    cancelButton.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
+// RESET PASSWORD
+function doReset() {
+  clearErrors();
+  clearAlert();
 
-    worldImage.addEventListener('change', () => {
-      const file = worldImage.files && worldImage.files[0];
-      if (!file) {
-        previewImage.style.display = 'none';
-        previewText.style.display = 'block';
-        return;
-      }
-      const url = URL.createObjectURL(file);
-      previewImage.src = url;
-      previewImage.style.display = 'block';
-      previewText.style.display = 'none';
-    });
+  const email = document.getElementById('resetEmail').value.trim();
+  if (!validEmail(email)) { setErr('resetEmailErr', t('errEmailInvalid')); return; }
 
-    document.getElementById('saveWorld').addEventListener('click', () => {
-      closeModal();
-      alert('Пока это оформление-пустышка. Позже здесь будет сохранение мира/персонажа на сервер.');
-    });
-  </script>
+  /*
+   * ── ЗАDЕЛ НА БЭКЕНД ──
+   * POST /api/reset-request  { email }
+   * Сервер: генерирует reset-token (UUID), сохраняет с TTL 1ч,
+   * отправляет письмо со ссылкой /reset?token=...
+   * Отвечает 200 всегда (чтобы не раскрывать наличие email).
+   */
+
+  // Frontend: просто показываем сообщение
+  showAlert('success', t('msgResetSent', { email }));
+}
+
+// LOGOUT
+function doLogout() {
+  clearSession();
+  updateAuthUI();
+  closeModal();
+}
+
+/* ────────────────────────────────────────
+   CHAT NAVIGATION
+──────────────────────────────────────── */
+function openChat(name) {
+  document.getElementById('mainView').style.display = 'none';
+  document.getElementById('chatView').style.display = 'grid';
+  document.getElementById('chatTitle').innerHTML = '<b>' + name + '</b>';
+}
+
+function closeChat() {
+  document.getElementById('chatView').style.display = 'none';
+  document.getElementById('mainView').style.display = 'grid';
+}
+
+/* ────────────────────────────────────────
+   INIT
+──────────────────────────────────────── */
+applyLang();
+updateAuthUI();
+</script>
+
 </body>
 </html>
