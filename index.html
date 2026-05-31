@@ -1,11 +1,891 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Мой сайт</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ролевой чат-бот</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --bg2: #0f1624;
+      --panel: #121a2a;
+      --panel2: #172033;
+      --line: rgba(255,255,255,0.08);
+      --text: #e9eefb;
+      --muted: #8f9bb8;
+      --accent: #7c5cff;
+      --accent2: #33c7ff;
+      --good: #28d17c;
+      --danger: #ff6b6b;
+      --shadow: 0 18px 50px rgba(0,0,0,0.35);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background:
+        radial-gradient(circle at top left, rgba(124,92,255,0.17), transparent 30%),
+        radial-gradient(circle at top right, rgba(51,199,255,0.12), transparent 24%),
+        linear-gradient(180deg, #070a10 0%, #0b0f17 100%);
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px minmax(520px, 1fr) 420px;
+      gap: 16px;
+      padding: 16px;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      overflow: hidden;
+    }
+
+    .sidebar {
+      display: grid;
+      grid-template-rows: auto 1fr 1fr;
+      min-height: calc(100vh - 32px);
+    }
+
+    .sidebar-header, .center-header, .chat-header, .auth-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .sidebar-header h2, .center-header h1, .chat-header h2 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: 0.2px;
+    }
+
+    .btn {
+      appearance: none;
+      border: 0;
+      border-radius: 14px;
+      padding: 11px 14px;
+      background: linear-gradient(135deg, var(--accent), #5a89ff);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 10px 28px rgba(124,92,255,0.28);
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+    .btn.secondary {
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    .btn.small { padding: 9px 12px; border-radius: 12px; font-size: 13px; }
+
+    .created-list {
+      padding: 12px;
+      overflow: auto;
+    }
+
+    .created-item {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid transparent;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+
+    .created-item:hover, .created-item.active {
+      border-color: rgba(124,92,255,0.36);
+      background: rgba(124,92,255,0.12);
+    }
+
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      overflow: hidden;
+      flex: 0 0 auto;
+      background: linear-gradient(135deg, rgba(124,92,255,0.8), rgba(51,199,255,0.8));
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      color: white;
+    }
+
+    .created-item h3 {
+      margin: 0 0 4px;
+      font-size: 14px;
+    }
+
+    .created-item p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .stub {
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      color: var(--muted);
+      text-align: center;
+      min-height: 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .stub-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 18px;
+      border: 1px dashed rgba(255,255,255,0.14);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(255,255,255,0.015);
+    }
+
+    .stub h3 { margin: 0 0 8px; color: var(--text); font-size: 15px; }
+    .stub p { margin: 0; max-width: 220px; line-height: 1.5; font-size: 13px; }
+
+    .center {
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      min-height: calc(100vh - 32px);
+    }
+
+    .top-strip {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow: 0 12px 28px rgba(124,92,255,0.25);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .brand p, .subtitle {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .auth-bar {
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .hero {
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      gap: 10px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 16px;
+    }
+
+    .hero-card {
+      padding: 18px;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)),
+        radial-gradient(circle at top right, rgba(124,92,255,0.18), transparent 40%);
+      min-height: 160px;
+    }
+
+    .hero-card h2 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      line-height: 1.15;
+    }
+
+    .hero-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      max-width: 56ch;
+    }
+
+    .hero-actions {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .stat {
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+      padding: 14px;
+    }
+
+    .stat span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .stat strong {
+      font-size: 22px;
+    }
+
+    .cards-area {
+      padding: 16px;
+      overflow: auto;
+    }
+
+    .cards-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .cards-head h2 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .cards-head .subtitle {
+      margin: 4px 0 0;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .world-card {
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.09);
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.28);
+      display: flex;
+      flex-direction: column;
+      min-height: 420px;
+    }
+
+    .world-image {
+      aspect-ratio: 3 / 4;
+      width: 100%;
+      object-fit: cover;
+      display: block;
+      background: #111;
+    }
+
+    .world-content {
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .chip-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      font-size: 11px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: rgba(124,92,255,0.15);
+      border: 1px solid rgba(124,92,255,0.24);
+      color: #d8d1ff;
+    }
+
+    .world-content h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .world-content p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 13px;
+    }
+
+    .world-footer {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .chat {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: calc(100vh - 32px);
+    }
+
+    .chat-body {
+      padding: 16px;
+      overflow: auto;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0));
+    }
+
+    .chat-note {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 13px;
+    }
+
+    .msg {
+      max-width: 92%;
+      padding: 12px 14px;
+      border-radius: 18px;
+      line-height: 1.5;
+      font-size: 14px;
+      border: 1px solid transparent;
+      white-space: pre-wrap;
+    }
+
+    .msg.bot {
+      background: rgba(255,255,255,0.04);
+      border-color: var(--line);
+      justify-self: start;
+    }
+
+    .msg.user {
+      background: linear-gradient(135deg, rgba(124,92,255,0.25), rgba(51,199,255,0.18));
+      border-color: rgba(124,92,255,0.22);
+      justify-self: end;
+    }
+
+    .composer {
+      padding: 16px;
+      border-top: 1px solid var(--line);
+      background: rgba(255,255,255,0.02);
+      display: grid;
+      gap: 12px;
+    }
+
+    .composer-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .input, .textarea, select {
+      width: 100%;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(6,10,18,0.8);
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+      outline: none;
+    }
+
+    .input::placeholder, .textarea::placeholder { color: #6e7994; }
+    .textarea { min-height: 120px; resize: vertical; }
+
+    .compose-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .file-field {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .file-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      cursor: pointer;
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .file-label input { display: none; }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.58);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 40;
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      width: min(860px, 100%);
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: linear-gradient(180deg, rgba(18,26,42,0.98), rgba(11,15,23,0.98));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 18px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .modal-body {
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .form-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .preview-box {
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+      min-height: 180px;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      text-align: center;
+      padding: 16px;
+    }
+
+    .preview-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .modal-footer {
+      padding: 18px 20px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .close-x {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: inline-grid;
+      place-items: center;
+      cursor: pointer;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      font-size: 18px;
+    }
+
+    @media (max-width: 1280px) {
+      .app { grid-template-columns: 260px 1fr; }
+      .chat { grid-column: 2; }
+      .center { grid-column: 2; }
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar, .center, .chat {
+        min-height: auto;
+      }
+
+      .form-grid, .hero-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-    <h1>Привет!</h1>
-    <p>Это мой первый сайт на GitHub Pages.</p>
+  <div class="app">
+    <aside class="panel sidebar">
+      <div class="sidebar-header">
+        <h2>Созданные чаты</h2>
+        <button class="btn small" id="openWorldModal">+ Создать мир</button>
+      </div>
+      <div class="created-list">
+        <div class="created-item active">
+          <div class="avatar">М</div>
+          <div>
+            <h3>Мир: Туманные земли</h3>
+            <p>Старинные леса, магия и шумные трактиры на границе королевств.</p>
+          </div>
+        </div>
+        <div class="created-item">
+          <div class="avatar">П</div>
+          <div>
+            <h3>Персонаж: Лина</h3>
+            <p>Сдержанная разведчица с холодной улыбкой и опасной памятью.</p>
+          </div>
+        </div>
+        <div class="created-item">
+          <div class="avatar">М</div>
+          <div>
+            <h3>Мир: Пепельный город</h3>
+            <p>Город-крепость, где технологии и древние ритуалы слились воедино.</p>
+          </div>
+        </div>
+      </div>
+      <div class="stub">
+        <div class="stub-inner">
+          <div>
+            <h3>Левая верхняя зона</h3>
+            <p>Заглушка под будущие фильтры, папки, избранное и управление аккаунтом.</p>
+          </div>
+        </div>
+      </div>
+      <div class="stub">
+        <div class="stub-inner">
+          <div>
+            <h3>Левая нижняя зона</h3>
+            <p>Здесь позже можно разместить историю, настройки, инвентарь или быстрые вкладки.</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="panel center">
+      <div class="top-strip">
+        <div class="brand">
+          <div class="logo"></div>
+          <div>
+            <h1>Миры и персонажи для ролевых чатов</h1>
+            <p>Темная тема, оформление-пустышка, задел под будущий backend.</p>
+          </div>
+        </div>
+        <div class="auth-bar">
+          <button class="btn secondary small">Вход</button>
+          <button class="btn small">Регистрация</button>
+        </div>
+      </div>
+
+      <section class="hero">
+        <div class="hero-grid">
+          <div class="hero-card">
+            <h2>Платформа для ролевых игр с чат-ботом</h2>
+            <p>Создавай миры и персонажей, прикрепляй изображения, а сам диалог позже подключится к бэкэнду. Сейчас здесь аккуратный визуальный прототип с пустыми местами под будущую логику.</p>
+            <div class="hero-actions">
+              <button class="btn" id="openWorldModal2">Создать мир</button>
+              <button class="btn secondary">Открыть чат</button>
+              <button class="btn secondary">Избранное</button>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <span>Шаблоны</span>
+              <strong>12</strong>
+            </div>
+            <div class="stat">
+              <span>Аккаунт</span>
+              <strong>—</strong>
+            </div>
+            <div class="stat">
+              <span>Чаты</span>
+              <strong>3</strong>
+            </div>
+            <div class="stat">
+              <span>Состояние</span>
+              <strong>Demo</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cards-area">
+        <div class="cards-head">
+          <div>
+            <h2>Предлагаемые чаты</h2>
+            <div class="subtitle">Вертикальные карточки с изображением, названием и описанием.</div>
+          </div>
+          <button class="btn secondary small">Сортировка</button>
+        </div>
+
+        <div class="cards-grid">
+          <article class="world-card">
+            <img class="world-image" src="https://images.unsplash.com/photo-1518709268805-4e9042af2176?auto=format&fit=crop&w=900&q=80" alt="Мир" />
+            <div class="world-content">
+              <div class="chip-row">
+                <span class="chip">Мир</span>
+                <span class="chip">Фэнтези</span>
+              </div>
+              <h3>Туманные земли</h3>
+              <p>Северные леса, древние руины и дороги, которые меняют маршрут по ночам.</p>
+              <div class="world-footer">
+                <span class="meta">Подходит для приключений</span>
+                <button class="btn small">Открыть</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="world-card">
+            <img class="world-image" src="https://images.unsplash.com/photo-1501612780327-45045538702b?auto=format&fit=crop&w=900&q=80" alt="Персонаж" />
+            <div class="world-content">
+              <div class="chip-row">
+                <span class="chip">Персонаж</span>
+                <span class="chip">Драма</span>
+              </div>
+              <h3>Лина</h3>
+              <p>Разведчица, которая знает больше, чем говорит, и всегда держит запасной план.</p>
+              <div class="world-footer">
+                <span class="meta">NPC / напарник</span>
+                <button class="btn small">Открыть</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="world-card">
+            <img class="world-image" src="https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=900&q=80" alt="Мир" />
+            <div class="world-content">
+              <div class="chip-row">
+                <span class="chip">Мир</span>
+                <span class="chip">Sci‑fi</span>
+              </div>
+              <h3>Пепельный город</h3>
+              <p>Неон, пар и старые легенды в мире, где магия встроена в механизмы.</p>
+              <div class="world-footer">
+                <span class="meta">Технологии и тайны</span>
+                <button class="btn small">Открыть</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="world-card">
+            <img class="world-image" src="https://images.unsplash.com/photo-1471047283799-2d700ff6df66?auto=format&fit=crop&w=900&q=80" alt="Персонаж" />
+            <div class="world-content">
+              <div class="chip-row">
+                <span class="chip">Персонаж</span>
+                <span class="chip">Мистика</span>
+              </div>
+              <h3>Арден</h3>
+              <p>Молчаливый маг, который предпочитает делать выводы по одному жесту и одному взгляду.</p>
+              <div class="world-footer">
+                <span class="meta">Характерный собеседник</span>
+                <button class="btn small">Открыть</button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <section class="panel chat">
+      <div class="chat-header">
+        <div>
+          <h2>Чат</h2>
+          <div class="subtitle">Пока заглушка под будущую логику бота и сценарии диалогов.</div>
+        </div>
+        <button class="btn secondary small">Очистить</button>
+      </div>
+      <div class="chat-body">
+        <div class="chat-note">Правая часть экрана отведена под чат. Позже здесь появятся сообщения, выбор реплик, статус мира и управление сценой.</div>
+        <div class="msg bot">Здравствуйте. Я готов вести сюжет, когда подключится бэкэнд.</div>
+        <div class="msg user">Хочу открыть мир с персонажем и начать диалог.</div>
+        <div class="msg bot">Отлично. Сейчас это только визуальная оболочка с заделом на полноценную систему аккаунтов и сохранение прогресса.</div>
+      </div>
+      <div class="composer">
+        <div class="composer-row">
+          <input class="input" type="text" placeholder="Введите сообщение..." />
+          <button class="btn">Отправить</button>
+        </div>
+        <div class="compose-actions">
+          <div class="file-field">
+            <label class="file-label">
+              <input type="file" accept="image/*" multiple id="chatFiles" />
+              Прикрепить файл
+            </label>
+            <span class="hint">Для будущих изображений, реплик и артов сцены.</span>
+          </div>
+          <button class="btn secondary">Сохранить черновик</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="worldModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Создать мир</h2>
+        <button class="close-x" id="closeWorldModal">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="preview-box" id="previewBox">
+            <img id="previewImage" alt="Предпросмотр" />
+            <div id="previewText">Предпросмотр изображения появится здесь</div>
+          </div>
+          <div class="form-stack">
+            <select class="input" id="worldType">
+              <option value="world">Мир</option>
+              <option value="character">Персонаж</option>
+            </select>
+            <input class="input" type="text" id="worldName" placeholder="Название" />
+            <textarea class="textarea" id="worldDescription" placeholder="Описание"></textarea>
+            <label class="file-label" style="width: fit-content;">
+              <input type="file" accept="image/*" id="worldImage" />
+              Прикрепить изображения
+            </label>
+            <div class="hint">Можно добавить одно или несколько изображений позже, когда будет подключена логика сохранения.</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary" id="cancelWorld">Отмена</button>
+        <button class="btn" id="saveWorld">Создать</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const modal = document.getElementById('worldModal');
+    const openButtons = [document.getElementById('openWorldModal'), document.getElementById('openWorldModal2')];
+    const closeButton = document.getElementById('closeWorldModal');
+    const cancelButton = document.getElementById('cancelWorld');
+    const worldImage = document.getElementById('worldImage');
+    const previewImage = document.getElementById('previewImage');
+    const previewText = document.getElementById('previewText');
+
+    function openModal() {
+      modal.classList.add('open');
+    }
+
+    function closeModal() {
+      modal.classList.remove('open');
+    }
+
+    openButtons.forEach(btn => btn.addEventListener('click', openModal));
+    closeButton.addEventListener('click', closeModal);
+    cancelButton.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    worldImage.addEventListener('change', () => {
+      const file = worldImage.files && worldImage.files[0];
+      if (!file) {
+        previewImage.style.display = 'none';
+        previewText.style.display = 'block';
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      previewImage.src = url;
+      previewImage.style.display = 'block';
+      previewText.style.display = 'none';
+    });
+
+    document.getElementById('saveWorld').addEventListener('click', () => {
+      closeModal();
+      alert('Пока это оформление-пустышка. Позже здесь будет сохранение мира/персонажа на сервер.');
+    });
+  </script>
 </body>
 </html>
