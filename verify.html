@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Подтверждение — Luminara</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: #070a10;
+      color: #edf1ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    .box {
+      text-align: center;
+      padding: 40px;
+      background: #121a2a;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 24px;
+      max-width: 400px;
+    }
+    .logo {
+      font-family: 'Cinzel', serif;
+      font-size: 22px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 24px;
+    }
+    .icon { font-size: 48px; margin-bottom: 16px; }
+    .btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 24px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #7c5cff, #4ea2ff);
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="box">
+    <div class="logo">Luminara</div>
+    <div class="icon" id="icon">⏳</div>
+    <div id="msg">Подтверждаем ваш email...</div>
+    <div id="btnWrap"></div>
+  </div>
+
+  <script>
+    const API = 'https://ЗАМЕНИ-НА-СВОЙ-NGROK.ngrok-free.app';
+
+    async function verify() {
+      const token = new URLSearchParams(window.location.search).get('token');
+      
+      if (!token) {
+        document.getElementById('icon').textContent = '❌';
+        document.getElementById('msg').textContent = 'Неверная ссылка.';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+          body: JSON.stringify({ token })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          document.getElementById('icon').textContent = '🎉';
+          document.getElementById('msg').textContent = `Добро пожаловать, ${data.name}! Email подтверждён.`;
+          document.getElementById('btnWrap').innerHTML = '<a class="btn" href="/">Войти в Luminara</a>';
+        } else {
+          document.getElementById('icon').textContent = '⚠️';
+          document.getElementById('msg').textContent = data.detail || 'Что-то пошло не так.';
+        }
+      } catch (e) {
+        document.getElementById('icon').textContent = '❌';
+        document.getElementById('msg').textContent = 'Нет связи с сервером.';
+      }
+    }
+
+    verify();
+  </script>
+</body>
+</html>
