@@ -418,6 +418,20 @@ button, input { font: inherit; }
 
 .message-input:focus { border-color: rgba(124,92,255,.5); }
 
+/* Typing indicator */
+.typing { display: flex; gap: 5px; align-items: center; padding: 14px 16px !important; }
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--muted);
+  animation: bounce 1.2s infinite;
+}
+.dot:nth-child(2) { animation-delay: .2s; }
+.dot:nth-child(3) { animation-delay: .4s; }
+@keyframes bounce {
+  0%,60%,100% { transform: translateY(0); }
+  30%          { transform: translateY(-6px); }
+}
+
 /* ─── MODAL OVERLAY ─── */
 .overlay {
   display: none;
@@ -634,11 +648,10 @@ button, input { font: inherit; }
   <aside class="panel sidebar">
     <div class="sidebar-header">
       <span class="sidebar-title" data-i18n="chats">Чаты</span>
-      <button class="btn small" data-i18n="createWorld">+ Создать мир</button>
+      <button class="btn small" onclick="openNewWorldModal()" data-i18n="createWorld">+ Создать мир</button>
     </div>
-    <div class="chat-list">
-      <div class="chat-item" onclick="openChat('Туманные земли')">Туманные земли</div>
-      <div class="chat-item" onclick="openChat('Лина')">Лина</div>
+    <div class="chat-list" id="chatList">
+      <div style="padding:12px;color:var(--muted);font-size:13px">Войдите, чтобы увидеть миры</div>
     </div>
   </aside>
 
@@ -734,13 +747,11 @@ button, input { font: inherit; }
         <div class="chat-sub" data-i18n="chatSub">Персонаж • Онлайн</div>
       </div>
     </div>
-    <div class="messages">
-      <div class="msg bot" data-i18n="chatPlaceholder">Чат подключится к backend позже.</div>
-    </div>
+    <div class="messages" id="messages"></div>
     <div class="inputbar">
       <button class="icon-btn">📎</button>
-      <input class="message-input" data-i18n-placeholder="messagePlaceholder" placeholder="Сообщение...">
-      <button class="icon-btn">✈</button>
+      <input class="message-input" id="messageInput" data-i18n-placeholder="messagePlaceholder" placeholder="Сообщение..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}">
+      <button class="icon-btn" id="sendBtn" onclick="sendMessage()">✈</button>
     </div>
   </div>
 </div>
@@ -849,6 +860,26 @@ button, input { font: inherit; }
 </div>
 
 <!-- ═══════════════════════════════════════
+     NEW WORLD MODAL
+════════════════════════════════════════ -->
+<div class="overlay" id="newWorldOverlay" onclick="if(event.target===this)closeNewWorldModal()">
+  <div class="modal" style="max-width:520px">
+    <button class="modal-close" onclick="closeNewWorldModal()">✕</button>
+    <div class="modal-logo">Новый мир</div>
+    <div class="modal-sub">Опиши мир и персонажей для своего приключения</div>
+    <div class="field">
+      <label>Название мира</label>
+      <input type="text" id="newWorldName" placeholder="Осколки Забытого Солнца...">
+    </div>
+    <div class="field">
+      <label>Промпт мастера</label>
+      <textarea id="newWorldPrompt" placeholder="Опиши мир, главного героя, атмосферу..." style="width:100%;min-height:140px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:#0b1019;color:var(--text);outline:none;resize:vertical;font:inherit;font-size:14px;transition:border-color .2s" onfocus="this.style.borderColor='rgba(124,92,255,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.08)'"></textarea>
+    </div>
+    <button class="btn btn-full" id="createWorldBtn" onclick="createWorld()">Создать мир</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
      SCRIPT
 ════════════════════════════════════════ -->
 <script>
@@ -856,7 +887,7 @@ button, input { font: inherit; }
    BACKEND URL
    Замени на свой ngrok-адрес перед деплоем!
 ──────────────────────────────────────── */
-const API = 'https://lying-angler-predefine.ngrok-free.dev';
+const API = 'https://ЗАМЕНИ-НА-СВОЙ-NGROK.ngrok-free.app';
 
 /* ────────────────────────────────────────
    i18n
@@ -1098,6 +1129,9 @@ function updateAuthUI() {
   document.getElementById('loginBtn').style.display    = isIn ? 'none' : '';
   document.getElementById('registerBtn').style.display = isIn ? 'none' : '';
   document.getElementById('accountBtn').style.display  = isIn ? '' : 'none';
+  if (isIn) loadSessions();
+  else document.getElementById('chatList').innerHTML =
+    '<div style="padding:12px;color:var(--muted);font-size:13px">Войдите, чтобы увидеть миры</div>';
 }
 
 /* ────────────────────────────────────────
@@ -1372,6 +1406,174 @@ function closeChat() {
 /* ────────────────────────────────────────
    INIT
 ──────────────────────────────────────── */
+/* ────────────────────────────────────────
+   CHAT STATE
+──────────────────────────────────────── */
+let currentSessionId = null;
+
+/* ── Загрузить сессии в сайдбар ── */
+async function loadSessions() {
+  if (!currentUser) return;
+  try {
+    const res = await fetch(`${API}/session/list/${currentUser.id}`, {
+      headers: { 'ngrok-skip-browser-warning': 'true' }
+    });
+    const data = await res.json();
+    const list = document.getElementById('chatList');
+    if (!data.sessions.length) {
+      list.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:13px">Нет миров — создай первый!</div>';
+      return;
+    }
+    list.innerHTML = '';
+    data.sessions.forEach(s => {
+      const div = document.createElement('div');
+      div.className = 'chat-item';
+      div.textContent = s.name;
+      div.onclick = () => openChatSession(s.id, s.name);
+      list.appendChild(div);
+    });
+  } catch(e) {
+    console.error('loadSessions error', e);
+  }
+}
+
+/* ── Открыть сессию и загрузить историю ── */
+async function openChatSession(sessionId, name) {
+  currentSessionId = sessionId;
+  document.getElementById('mainView').style.display = 'none';
+  document.getElementById('chatView').style.display = 'grid';
+  document.getElementById('chatTitle').innerHTML = '<b>' + name + '</b>';
+
+  const msgs = document.getElementById('messages');
+  msgs.innerHTML = '<div class="msg bot typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+
+  try {
+    const res = await fetch(`${API}/session/${sessionId}/history`, {
+      headers: { 'ngrok-skip-browser-warning': 'true' }
+    });
+    const data = await res.json();
+    msgs.innerHTML = '';
+    if (!data.history.length) {
+      addMessage('bot', '*Мир ждёт тебя. Опиши своё действие...*');
+      return;
+    }
+    data.history.forEach(msg => {
+      if (msg.role === 'assistant') {
+        const m = msg.content.match(/<response>([\s\S]*?)<\/response>/);
+        if (m) { try { JSON.parse(m[1]).lines.forEach(l => addMessage('bot', l)); } catch(e){} }
+      } else {
+        addMessage('user', msg.content.replace(/^USER MESSAGE:\s*/, ''));
+      }
+    });
+  } catch(e) {
+    msgs.innerHTML = '';
+    addMessage('bot', '❌ Не удалось загрузить историю');
+  }
+}
+
+/* ── Модал создания мира ── */
+function openNewWorldModal() {
+  if (!currentUser) { openModal('login'); return; }
+  document.getElementById('newWorldOverlay').classList.add('open');
+}
+
+function closeNewWorldModal() {
+  document.getElementById('newWorldOverlay').classList.remove('open');
+}
+
+async function createWorld() {
+  const name   = document.getElementById('newWorldName').value.trim();
+  const prompt = document.getElementById('newWorldPrompt').value.trim();
+  if (!name) { document.getElementById('newWorldName').focus(); return; }
+
+  const btn = document.getElementById('createWorldBtn');
+  btn.disabled = true; btn.textContent = '...';
+
+  try {
+    const res = await fetch(`${API}/session/new`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+      body: JSON.stringify({ user_id: currentUser.id, name, master_prompt: prompt })
+    });
+    const data = await res.json();
+    closeNewWorldModal();
+    await loadSessions();
+    openChatSession(data.session_id, name);
+  } catch(e) {
+    alert('Ошибка создания мира');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Создать мир';
+  }
+}
+
+/* ── Отправить сообщение ── */
+async function sendMessage() {
+  if (!currentSessionId || !currentUser) return;
+  const input = document.getElementById('messageInput');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  addMessage('user', text);
+
+  const typingId = addTyping();
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+      body: JSON.stringify({ session_id: currentSessionId, user_id: currentUser.id, message: text })
+    });
+    const data = await res.json();
+    removeTyping(typingId);
+
+    if (data.tags?.response?.lines) {
+      data.tags.response.lines.forEach(l => addMessage('bot', l));
+    } else if (data.tags?.narrative_error) {
+      addMessage('bot', '⚠️ ' + data.tags.narrative_error.text_error);
+    } else if (data.tags?.safe_error) {
+      addMessage('bot', '🛑 ' + data.tags.safe_error.type);
+    } else {
+      addMessage('bot', '...');
+    }
+  } catch(e) {
+    removeTyping(typingId);
+    addMessage('bot', '❌ Нет связи с сервером');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ── Хелперы сообщений ── */
+function addMessage(role, text) {
+  const msgs = document.getElementById('messages');
+  const div  = document.createElement('div');
+  div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+  // *текст* → курсив
+  div.innerHTML = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function addTyping() {
+  const msgs = document.getElementById('messages');
+  const div  = document.createElement('div');
+  const id   = 'typing-' + Date.now();
+  div.className = 'msg bot typing'; div.id = id;
+  div.innerHTML  = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return id;
+}
+
+function removeTyping(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
 applyLang();
 updateAuthUI();
 </script>
