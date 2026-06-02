@@ -1020,7 +1020,7 @@ button, input { font: inherit; }
    BACKEND URL
    Замени на свой ngrok-адрес перед деплоем!
 ──────────────────────────────────────── */
-const API = 'https://lying-angler-predefine.ngrok-free.dev';
+const API = 'https://ЗАМЕНИ-НА-СВОЙ-NGROK.ngrok-free.app';
 
 /* ────────────────────────────────────────
    i18n
@@ -1766,8 +1766,7 @@ window.onYouTubeIframeAPIReady = function() {
   ytReady = true;
   ytPlayer = new YT.Player('ytPlayer', {
     height: '1', width: '1',
-    videoId: '',
-    playerVars: { autoplay: 1, controls: 0, rel: 0 },
+    playerVars: { autoplay: 0, controls: 0, rel: 0 },
     events: { onStateChange: onYtStateChange }
   });
 };
