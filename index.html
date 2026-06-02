@@ -444,11 +444,17 @@ button, input { font: inherit; }
 
 .messages {
   padding: 16px;
-  overflow: auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Внутренний контейнер — прижимает сообщения ко дну */
+.messages-inner {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  justify-content: flex-end;
+  margin-top: auto;
 }
 
 .msg {
@@ -846,22 +852,37 @@ button, input { font: inherit; }
         <div class="chat-sub" data-i18n="chatSub">Персонаж • Онлайн</div>
       </div>
     </div>
-    <div class="messages" id="messages"></div>
+    <div class="messages" id="messages"><div class="messages-inner" id="messagesInner"></div></div>
     <!-- YouTube player bar -->
-    <div id="ytBar" style="display:none;padding:10px 14px;border-top:1px solid var(--line);background:rgba(255,255,255,.02)">
+    <div id="ytBar" style="display:none;padding:10px 14px 8px;border-top:1px solid var(--line);background:rgba(255,255,255,.02)">
       <div id="ytPlayer" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:16px">🎵</span>
-        <div id="ytTitle" style="flex:1;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
-        <div style="display:flex;gap:6px;flex-shrink:0">
-          <button onclick="ytPrev()" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:white;cursor:pointer;font-size:14px">⏮</button>
-          <button id="ytPlayBtn" onclick="ytToggle()" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:rgba(124,92,255,.2);color:white;cursor:pointer;font-size:14px">⏸</button>
-          <button onclick="ytNext()" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:white;cursor:pointer;font-size:14px">⏭</button>
-          <button onclick="ytStop()" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--muted);cursor:pointer;font-size:14px">⏹</button>
+      <!-- Верхняя строка: превью + инфо + кнопки -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <!-- Превью -->
+        <div id="ytThumb" style="flex-shrink:0;width:56px;height:36px;border-radius:7px;overflow:hidden;background:#111;border:1px solid var(--line)">
+          <img id="ytThumbImg" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:block">
+        </div>
+        <!-- Название и автор -->
+        <div style="flex:1;min-width:0">
+          <div id="ytTrackTitle" style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)">—</div>
+          <div id="ytTrackAuthor" style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">—</div>
+        </div>
+        <!-- Кнопки управления -->
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          <button onclick="ytPrev()" style="width:30px;height:30px;border-radius:7px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:white;cursor:pointer;font-size:13px">⏮</button>
+          <button id="ytPlayBtn" onclick="ytToggle()" style="width:30px;height:30px;border-radius:7px;border:1px solid var(--line);background:rgba(124,92,255,.25);color:white;cursor:pointer;font-size:13px">⏸</button>
+          <button onclick="ytNext()" style="width:30px;height:30px;border-radius:7px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:white;cursor:pointer;font-size:13px">⏭</button>
+          <button onclick="ytStop()" style="width:30px;height:30px;border-radius:7px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--muted);cursor:pointer;font-size:13px">⏹</button>
         </div>
       </div>
-      <div style="margin-top:8px;height:3px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden">
-        <div id="ytProgress" style="height:100%;width:0%;background:linear-gradient(90deg,#7c5cff,#4ea2ff);border-radius:99px;transition:width .5s linear"></div>
+      <!-- Прогресс-бар с перемоткой -->
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="ytCurrent" style="font-size:11px;color:var(--muted);min-width:36px;text-align:right;font-variant-numeric:tabular-nums">0:00</span>
+        <div id="ytSeekWrap" onclick="ytSeek(event)" style="flex:1;height:4px;background:rgba(255,255,255,.1);border-radius:99px;cursor:pointer;position:relative">
+          <div id="ytProgress" style="height:100%;width:0%;background:linear-gradient(90deg,#7c5cff,#4ea2ff);border-radius:99px;pointer-events:none"></div>
+          <div id="ytDot" style="position:absolute;top:50%;right:calc(100% - var(--p, 0%));transform:translate(50%,-50%);width:10px;height:10px;border-radius:50%;background:#a78bfa;pointer-events:none;opacity:0;transition:opacity .15s"></div>
+        </div>
+        <span id="ytDuration" style="font-size:11px;color:var(--muted);min-width:36px;font-variant-numeric:tabular-nums">0:00</span>
       </div>
     </div>
     <div class="inputbar">
@@ -1585,7 +1606,7 @@ async function openChatSession(sessionId, name) {
   document.getElementById('chatView').style.display = 'grid';
   document.getElementById('chatTitle').innerHTML = '<b>' + name + '</b>';
 
-  const msgs = document.getElementById('messages');
+  const msgs = document.getElementById('messagesInner');
   msgs.innerHTML = '<div class="msg bot typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
 
   try {
@@ -1689,30 +1710,31 @@ async function sendMessage() {
 }
 
 /* ── Хелперы сообщений ── */
+function getMsgs()  { return document.getElementById('messagesInner'); }
+function scrollBot(){ const m=document.getElementById('messages'); m.scrollTop=m.scrollHeight; }
+
 function addMessage(role, text) {
-  const msgs = document.getElementById('messages');
+  const msgs = getMsgs();
   if (role === 'user') {
     const wrap = document.createElement('div');
     wrap.className = 'msg-wrap user-wrap';
     const bubble = document.createElement('div');
     bubble.className = 'msg user';
     bubble.textContent = text;
-    const copyBtn = makeCopyBtn(text);
     wrap.appendChild(bubble);
-    wrap.appendChild(copyBtn);
+    wrap.appendChild(makeCopyBtn(text));
     msgs.appendChild(wrap);
   } else {
-    // Одиночное bot сообщение (ошибки, служебные)
     const div = document.createElement('div');
     div.className = 'msg bot';
     div.innerHTML = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
     msgs.appendChild(div);
   }
-  msgs.scrollTop = msgs.scrollHeight;
+  scrollBot();
 }
 
 function addBotResponse(lines) {
-  const msgs = document.getElementById('messages');
+  const msgs = getMsgs();
   const wrap = document.createElement('div');
   wrap.className = 'msg-wrap';
   const bubble = document.createElement('div');
@@ -1721,11 +1743,10 @@ function addBotResponse(lines) {
   bubble.innerHTML = combined
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/\n/g, '<br>');
-  const copyBtn = makeCopyBtn(combined.replace(/\*(.*?)\*/g, '$1'));
   wrap.appendChild(bubble);
-  wrap.appendChild(copyBtn);
+  wrap.appendChild(makeCopyBtn(combined.replace(/\*(.*?)\*/g, '$1')));
   msgs.appendChild(wrap);
-  msgs.scrollTop = msgs.scrollHeight;
+  scrollBot();
 }
 
 function makeCopyBtn(text) {
@@ -1742,13 +1763,13 @@ function makeCopyBtn(text) {
 }
 
 function addTyping() {
-  const msgs = document.getElementById('messages');
+  const msgs = getMsgs();
   const div  = document.createElement('div');
   const id   = 'typing-' + Date.now();
   div.className = 'msg bot typing'; div.id = id;
-  div.innerHTML  = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+  div.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
   msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
+  scrollBot();
   return id;
 }
 
@@ -1764,35 +1785,63 @@ let ytPlayer   = null;
 let ytPlaylist = [];
 let ytIndex    = 0;
 let ytReady    = false;
+let ytTimer    = null;
 
 function getVideoId(url) {
   try { return new URLSearchParams(new URL(url).search).get('v'); }
   catch(e) { return null; }
 }
 
-window.onYouTubeIframeAPIReady = function() {
-  ytReady = true;
-  // Плеер создаётся только когда AI пришлёт музыку
-};
+function fmtTime(sec) {
+  if (!sec || isNaN(sec)) return '0:00';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+window.onYouTubeIframeAPIReady = function() { ytReady = true; };
 
 function initYtPlayer(onReadyCb) {
-  if (ytPlayer) { onReadyCb(); return; }
+  if (ytPlayer && ytPlayer.loadVideoById) { onReadyCb(); return; }
   ytPlayer = new YT.Player('ytPlayer', {
     height: '1', width: '1',
     playerVars: { autoplay: 1, controls: 0, rel: 0 },
-    events: {
-      onReady: () => onReadyCb(),
-      onStateChange: onYtStateChange
-    }
+    events: { onReady: () => onReadyCb(), onStateChange: onYtStateChange }
   });
 }
 
 function onYtStateChange(e) {
   const btn = document.getElementById('ytPlayBtn');
   if (!btn) return;
-  if (e.data === YT.PlayerState.PLAYING)       btn.textContent = '⏸';
-  else if (e.data === YT.PlayerState.PAUSED)   btn.textContent = '▶';
-  else if (e.data === YT.PlayerState.ENDED)    { btn.textContent = '▶'; ytNext(); }
+  if (e.data === YT.PlayerState.PLAYING) {
+    btn.textContent = '⏸';
+    startProgressTimer();
+  } else {
+    btn.textContent = '▶';
+    if (e.data === YT.PlayerState.ENDED) ytNext();
+  }
+}
+
+function startProgressTimer() {
+  clearInterval(ytTimer);
+  ytTimer = setInterval(() => {
+    if (!ytPlayer || !ytPlayer.getDuration) return;
+    const cur = ytPlayer.getCurrentTime() || 0;
+    const dur = ytPlayer.getDuration()    || 0;
+    const pct = dur > 0 ? (cur / dur * 100) : 0;
+    const prog = document.getElementById('ytProgress');
+    const wrap = document.getElementById('ytSeekWrap');
+    const dot  = document.getElementById('ytDot');
+    if (prog) prog.style.width = pct + '%';
+    if (wrap) wrap.style.setProperty('--p', pct + '%');
+    if (dot)  dot.style.setProperty('right', 'calc(100% - ' + pct + '%)');
+    const el = document.getElementById('ytCurrent');
+    const dl = document.getElementById('ytDuration');
+    if (el) el.textContent = fmtTime(cur);
+    if (dl) dl.textContent = fmtTime(dur);
+  }, 500);
 }
 
 function loadYoutube(urls) {
@@ -1804,13 +1853,48 @@ function loadYoutube(urls) {
 
 function ytPlayTrack() {
   if (!ytPlaylist.length) return;
-  const id = getVideoId(ytPlaylist[ytIndex]);
-  if (!id) return;
-  document.getElementById('ytTitle').textContent =
-    `Трек ${ytIndex + 1} / ${ytPlaylist.length}`;
-  if (ytReady && ytPlayer && ytPlayer.loadVideoById)
-    ytPlayer.loadVideoById(id);
+  const videoId = getVideoId(ytPlaylist[ytIndex]);
+  if (!videoId) return;
+
+  // Сброс UI
+  document.getElementById('ytTrackTitle').textContent  = `Трек ${ytIndex + 1} / ${ytPlaylist.length}`;
+  document.getElementById('ytTrackAuthor').textContent = '...';
+  document.getElementById('ytThumbImg').src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+  document.getElementById('ytCurrent').textContent  = '0:00';
+  document.getElementById('ytDuration').textContent = '0:00';
+  document.getElementById('ytProgress').style.width = '0%';
+
+  if (ytPlayer && ytPlayer.loadVideoById) {
+    ytPlayer.loadVideoById(videoId);
+    // Пробуем получить название через oEmbed (не требует API ключа)
+    fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById('ytTrackTitle').textContent  = d.title        || `Трек ${ytIndex + 1}`;
+        document.getElementById('ytTrackAuthor').textContent = d.author_name  || '—';
+      }).catch(() => {});
+  }
 }
+
+function ytSeek(e) {
+  if (!ytPlayer || !ytPlayer.getDuration) return;
+  const wrap = document.getElementById('ytSeekWrap');
+  const rect = wrap.getBoundingClientRect();
+  const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  ytPlayer.seekTo(ytPlayer.getDuration() * pct, true);
+}
+
+// Показываем точку при наведении на seekbar
+document.addEventListener('DOMContentLoaded', () => {
+  const wrap = document.getElementById('ytSeekWrap');
+  if (!wrap) return;
+  wrap.addEventListener('mouseenter', () => {
+    document.getElementById('ytDot').style.opacity = '1';
+  });
+  wrap.addEventListener('mouseleave', () => {
+    document.getElementById('ytDot').style.opacity = '0';
+  });
+});
 
 function ytPrev() {
   ytIndex = (ytIndex - 1 + ytPlaylist.length) % ytPlaylist.length;
@@ -1831,9 +1915,11 @@ function ytToggle() {
 
 function ytStop() {
   if (!ytPlayer) return;
+  clearInterval(ytTimer);
   ytPlayer.stopVideo();
-  const btn = document.getElementById('ytPlayBtn');
-  if (btn) btn.textContent = '▶';
+  document.getElementById('ytPlayBtn').textContent = '▶';
+  document.getElementById('ytProgress').style.width = '0%';
+  document.getElementById('ytCurrent').textContent  = '0:00';
 }
 
 applyLang();
