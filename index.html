@@ -337,9 +337,86 @@ button, input { font: inherit; }
 
 .chat-panel {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
   overflow: hidden;
 }
+
+/* ─── YOUTUBE PLAYER ─── */
+.yt-section {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255,255,255,.02);
+}
+.yt-section.active { display: flex; }
+.yt-top { display: flex; gap: 10px; align-items: center; }
+.yt-iframe-wrap {
+  flex-shrink: 0;
+  width: 80px;
+  height: 45px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.yt-iframe-wrap iframe { width: 100%; height: 100%; border: none; display: block; }
+.yt-info { flex: 1; min-width: 0; }
+.yt-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 3px;
+}
+.yt-title-text {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.yt-controls { display: flex; gap: 6px; align-items: center; }
+.yt-btn {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.05);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.yt-btn:hover { background: rgba(124,92,255,.25); }
+.yt-btn.active { background: rgba(124,92,255,.35); border-color: rgba(124,92,255,.5); }
+.yt-track-info {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ─── MESSAGE + COPY ─── */
+.msg-wrap { display: flex; flex-direction: column; gap: 4px; max-width: 80%; }
+.msg-wrap.user-wrap { align-self: flex-end; }
+.msg-wrap .msg { max-width: 100%; }
+.copy-btn {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: all .15s;
+  display: flex; align-items: center; gap: 4px;
+}
+.copy-btn:hover { color: var(--text); background: rgba(255,255,255,.06); }
+.msg-wrap.user-wrap .copy-btn { align-self: flex-end; }
 
 .chat-header {
   display: flex;
@@ -417,6 +494,27 @@ button, input { font: inherit; }
 }
 
 .message-input:focus { border-color: rgba(124,92,255,.5); }
+
+/* ── YouTube bar ── */
+#ytBar { display: none; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+#ytBar.active { display: flex; }
+.yt-thumb { width: 108px; height: 61px; border-radius: 8px; flex-shrink: 0; border: none; background: #000; }
+.yt-controls { display: flex; gap: 6px; margin-top: 6px; }
+.yt-btn {
+  padding: 5px 10px; border-radius: 8px;
+  border: 1px solid var(--line); background: rgba(255,255,255,.05);
+  color: white; cursor: pointer; font-size: 14px; transition: background .2s;
+}
+.yt-btn:hover { background: rgba(255,255,255,.12); }
+
+/* ── Copy button ── */
+.copy-btn {
+  display: inline-block; margin-top: 8px;
+  padding: 3px 10px; border-radius: 6px;
+  border: 1px solid var(--line); background: transparent;
+  color: var(--muted); font-size: 11px; cursor: pointer; transition: all .2s;
+}
+.copy-btn:hover { background: rgba(255,255,255,.06); color: var(--text); }
 
 /* Typing indicator */
 .typing { display: flex; gap: 5px; align-items: center; padding: 14px 16px !important; }
@@ -748,6 +846,23 @@ button, input { font: inherit; }
       </div>
     </div>
     <div class="messages" id="messages"></div>
+    <!-- YouTube player bar -->
+    <div id="ytBar" style="display:none;padding:10px 14px;border-top:1px solid var(--line);background:rgba(255,255,255,.02)">
+      <div id="ytPlayer" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:16px">🎵</span>
+        <div id="ytTitle" style="flex:1;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button onclick="ytPrev()" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:white;cursor:pointer;font-size:14px">⏮</button>
+          <button id="ytPlayBtn" onclick="ytToggle()" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:rgba(124,92,255,.2);color:white;cursor:pointer;font-size:14px">⏸</button>
+          <button onclick="ytNext()" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:white;cursor:pointer;font-size:14px">⏭</button>
+          <button onclick="ytStop()" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--muted);cursor:pointer;font-size:14px">⏹</button>
+        </div>
+      </div>
+      <div style="margin-top:8px;height:3px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden">
+        <div id="ytProgress" style="height:100%;width:0%;background:linear-gradient(90deg,#7c5cff,#4ea2ff);border-radius:99px;transition:width .5s linear"></div>
+      </div>
+    </div>
     <div class="inputbar">
       <button class="icon-btn">📎</button>
       <input class="message-input" id="messageInput" data-i18n-placeholder="messagePlaceholder" placeholder="Сообщение..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}">
@@ -837,13 +952,31 @@ button, input { font: inherit; }
     </div>
 
     <!-- ── VERIFY NOTICE ── -->
-    <div id="formVerify" style="display:none;text-align:center">
-      <div style="font-size:48px;margin-bottom:16px">📬</div>
-      <div style="font-weight:600;margin-bottom:8px" data-i18n="verifyTitle">Проверьте почту</div>
-      <div style="color:var(--muted);font-size:13px;margin-bottom:20px" data-i18n="verifyText">
-        Мы отправили письмо с подтверждением. Перейдите по ссылке в письме.
+    <div id="formVerify" style="display:none">
+      <div style="text-align:center;font-size:40px;margin-bottom:12px">📬</div>
+      <div style="font-weight:600;text-align:center;margin-bottom:20px">Почти готово!</div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:22px">
+
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line)">
+          <div style="min-width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#7c5cff,#4ea2ff);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">1</div>
+          <div>
+            <div style="font-weight:600;font-size:14px;margin-bottom:4px">Разрешите нам писать вам</div>
+            <div style="color:var(--muted);font-size:13px;line-height:1.5">Проверьте почту — там письмо от <b>Mailgun</b>. Нажмите кнопку подтверждения внутри, иначе наши письма не дойдут.</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line)">
+          <div style="min-width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#7c5cff,#4ea2ff);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">2</div>
+          <div>
+            <div style="font-weight:600;font-size:14px;margin-bottom:4px">Дождитесь нашего письма</div>
+            <div style="color:var(--muted);font-size:13px;line-height:1.5">После того как администратор одобрит заявку, придёт письмо со ссылкой активации — перейдите по ней.</div>
+          </div>
+        </div>
+
       </div>
-      <button class="btn btn-full secondary" onclick="closeModal()" data-i18n="gotIt">Понятно</button>
+
+      <button class="btn btn-full secondary" onclick="closeModal()">Понятно, жду письма</button>
     </div>
 
     <!-- ── ACCOUNT PANEL ── -->
@@ -887,7 +1020,7 @@ button, input { font: inherit; }
    BACKEND URL
    Замени на свой ngrok-адрес перед деплоем!
 ──────────────────────────────────────── */
-const API = 'https://lying-angler-predefine.ngrok-free.dev';
+const API = 'https://ЗАМЕНИ-НА-СВОЙ-NGROK.ngrok-free.app';
 
 /* ────────────────────────────────────────
    i18n
@@ -1460,7 +1593,7 @@ async function openChatSession(sessionId, name) {
     data.history.forEach(msg => {
       if (msg.role === 'assistant') {
         const m = msg.content.match(/<response>([\s\S]*?)<\/response>/);
-        if (m) { try { JSON.parse(m[1]).lines.forEach(l => addMessage('bot', l)); } catch(e){} }
+        if (m) { try { addBotResponse(JSON.parse(m[1]).lines); } catch(e){} }
       } else {
         addMessage('user', msg.content.replace(/^USER MESSAGE:\s*/, ''));
       }
@@ -1530,7 +1663,7 @@ async function sendMessage() {
     removeTyping(typingId);
 
     if (data.tags?.response?.lines) {
-      data.tags.response.lines.forEach(l => addMessage('bot', l));
+      addBotResponse(data.tags.response.lines);
     } else if (data.tags?.narrative_error) {
       addMessage('bot', '⚠️ ' + data.tags.narrative_error.text_error);
     } else if (data.tags?.safe_error) {
@@ -1538,6 +1671,7 @@ async function sendMessage() {
     } else {
       addMessage('bot', '...');
     }
+    if (data.tags?.youtube?.urls?.length) loadYoutube(data.tags.youtube.urls);
   } catch(e) {
     removeTyping(typingId);
     addMessage('bot', '❌ Нет связи с сервером');
@@ -1549,13 +1683,54 @@ async function sendMessage() {
 /* ── Хелперы сообщений ── */
 function addMessage(role, text) {
   const msgs = document.getElementById('messages');
-  const div  = document.createElement('div');
-  div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
-  // *текст* → курсив
-  div.innerHTML = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  msgs.appendChild(div);
+  if (role === 'user') {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg-wrap user-wrap';
+    const bubble = document.createElement('div');
+    bubble.className = 'msg user';
+    bubble.textContent = text;
+    const copyBtn = makeCopyBtn(text);
+    wrap.appendChild(bubble);
+    wrap.appendChild(copyBtn);
+    msgs.appendChild(wrap);
+  } else {
+    // Одиночное bot сообщение (ошибки, служебные)
+    const div = document.createElement('div');
+    div.className = 'msg bot';
+    div.innerHTML = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    msgs.appendChild(div);
+  }
   msgs.scrollTop = msgs.scrollHeight;
-  return div;
+}
+
+function addBotResponse(lines) {
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg bot';
+  const combined = lines.join('\n\n');
+  bubble.innerHTML = combined
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br>');
+  const copyBtn = makeCopyBtn(combined.replace(/\*(.*?)\*/g, '$1'));
+  wrap.appendChild(bubble);
+  wrap.appendChild(copyBtn);
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function makeCopyBtn(text) {
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.innerHTML = '⎘ Копировать';
+  btn.onclick = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.innerHTML = '✓ Скопировано';
+      setTimeout(() => { btn.innerHTML = '⎘ Копировать'; }, 1500);
+    });
+  };
+  return btn;
 }
 
 function addTyping() {
@@ -1574,9 +1749,82 @@ function removeTyping(id) {
   if (el) el.remove();
 }
 
+/* ────────────────────────────────────────
+   YOUTUBE PLAYER
+──────────────────────────────────────── */
+let ytPlayer   = null;
+let ytPlaylist = [];
+let ytIndex    = 0;
+let ytReady    = false;
+
+function getVideoId(url) {
+  try { return new URLSearchParams(new URL(url).search).get('v'); }
+  catch(e) { return null; }
+}
+
+window.onYouTubeIframeAPIReady = function() {
+  ytReady = true;
+  ytPlayer = new YT.Player('ytPlayer', {
+    height: '1', width: '1',
+    videoId: '',
+    playerVars: { autoplay: 1, controls: 0, rel: 0 },
+    events: { onStateChange: onYtStateChange }
+  });
+};
+
+function onYtStateChange(e) {
+  const btn = document.getElementById('ytPlayBtn');
+  if (!btn) return;
+  if (e.data === YT.PlayerState.PLAYING)       btn.textContent = '⏸';
+  else if (e.data === YT.PlayerState.PAUSED)   btn.textContent = '▶';
+  else if (e.data === YT.PlayerState.ENDED)    { btn.textContent = '▶'; ytNext(); }
+}
+
+function loadYoutube(urls) {
+  if (!urls || !urls.length) return;
+  ytPlaylist = urls; ytIndex = 0;
+  document.getElementById('ytBar').style.display = 'block';
+  ytPlayTrack();
+}
+
+function ytPlayTrack() {
+  if (!ytPlaylist.length) return;
+  const id = getVideoId(ytPlaylist[ytIndex]);
+  if (!id) return;
+  document.getElementById('ytTitle').textContent =
+    `Трек ${ytIndex + 1} / ${ytPlaylist.length}`;
+  if (ytReady && ytPlayer && ytPlayer.loadVideoById)
+    ytPlayer.loadVideoById(id);
+}
+
+function ytPrev() {
+  ytIndex = (ytIndex - 1 + ytPlaylist.length) % ytPlaylist.length;
+  ytPlayTrack();
+}
+
+function ytNext() {
+  ytIndex = (ytIndex + 1) % ytPlaylist.length;
+  ytPlayTrack();
+}
+
+function ytToggle() {
+  if (!ytPlayer) return;
+  ytPlayer.getPlayerState() === YT.PlayerState.PLAYING
+    ? ytPlayer.pauseVideo()
+    : ytPlayer.playVideo();
+}
+
+function ytStop() {
+  if (!ytPlayer) return;
+  ytPlayer.stopVideo();
+  const btn = document.getElementById('ytPlayBtn');
+  if (btn) btn.textContent = '▶';
+}
+
 applyLang();
 updateAuthUI();
 </script>
 
+<script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>
