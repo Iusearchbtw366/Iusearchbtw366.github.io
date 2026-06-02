@@ -448,6 +448,7 @@ button, input { font: inherit; }
   display: flex;
   flex-direction: column;
   gap: 10px;
+  justify-content: flex-end;
 }
 
 .msg {
@@ -1573,6 +1574,13 @@ async function loadSessions() {
 /* ── Открыть сессию и загрузить историю ── */
 async function openChatSession(sessionId, name) {
   currentSessionId = sessionId;
+
+  // Сбрасываем музыку при переходе в новый чат
+  if (ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
+  ytPlaylist = []; ytIndex = 0;
+  document.getElementById('ytBar').style.display = 'none';
+  document.getElementById('ytTitle').textContent = '—';
+
   document.getElementById('mainView').style.display = 'none';
   document.getElementById('chatView').style.display = 'grid';
   document.getElementById('chatTitle').innerHTML = '<b>' + name + '</b>';
@@ -1764,12 +1772,20 @@ function getVideoId(url) {
 
 window.onYouTubeIframeAPIReady = function() {
   ytReady = true;
+  // Плеер создаётся только когда AI пришлёт музыку
+};
+
+function initYtPlayer(onReadyCb) {
+  if (ytPlayer) { onReadyCb(); return; }
   ytPlayer = new YT.Player('ytPlayer', {
     height: '1', width: '1',
-    playerVars: { autoplay: 0, controls: 0, rel: 0 },
-    events: { onStateChange: onYtStateChange }
+    playerVars: { autoplay: 1, controls: 0, rel: 0 },
+    events: {
+      onReady: () => onReadyCb(),
+      onStateChange: onYtStateChange
+    }
   });
-};
+}
 
 function onYtStateChange(e) {
   const btn = document.getElementById('ytPlayBtn');
@@ -1783,7 +1799,7 @@ function loadYoutube(urls) {
   if (!urls || !urls.length) return;
   ytPlaylist = urls; ytIndex = 0;
   document.getElementById('ytBar').style.display = 'block';
-  ytPlayTrack();
+  if (ytReady) initYtPlayer(() => ytPlayTrack());
 }
 
 function ytPlayTrack() {
