@@ -1600,7 +1600,8 @@ async function openChatSession(sessionId, name) {
   if (ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
   ytPlaylist = []; ytIndex = 0;
   document.getElementById('ytBar').style.display = 'none';
-  document.getElementById('ytTitle').textContent = '—';
+  document.getElementById('ytTrackTitle').textContent  = '—';
+  document.getElementById('ytTrackAuthor').textContent = '—';
 
   document.getElementById('mainView').style.display = 'none';
   document.getElementById('chatView').style.display = 'grid';
