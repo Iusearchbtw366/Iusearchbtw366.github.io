@@ -454,7 +454,8 @@ button, input { font: inherit; }
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: auto;
+  min-height: 100%;
+  justify-content: flex-end;
 }
 
 .msg {
@@ -855,12 +856,11 @@ button, input { font: inherit; }
     <div class="messages" id="messages"><div class="messages-inner" id="messagesInner"></div></div>
     <!-- YouTube player bar -->
     <div id="ytBar" style="display:none;padding:10px 14px 8px;border-top:1px solid var(--line);background:rgba(255,255,255,.02)">
-      <div id="ytPlayer" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></div>
-      <!-- Верхняя строка: превью + инфо + кнопки -->
+      <!-- Верхняя строка: превью (реальный iframe) + инфо + кнопки -->
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <!-- Превью -->
-        <div id="ytThumb" style="flex-shrink:0;width:56px;height:36px;border-radius:7px;overflow:hidden;background:#111;border:1px solid var(--line)">
-          <img id="ytThumbImg" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:block">
+        <!-- Превью = видимый YouTube iframe 80x45 (аудио работает только на видимом плеере) -->
+        <div style="flex-shrink:0;width:80px;height:45px;border-radius:7px;overflow:hidden;background:#111;border:1px solid var(--line)">
+          <div id="ytPlayer"></div>
         </div>
         <!-- Название и автор -->
         <div style="flex:1;min-width:0">
@@ -1807,8 +1807,9 @@ window.onYouTubeIframeAPIReady = function() { ytReady = true; };
 function initYtPlayer(onReadyCb) {
   if (ytPlayer && ytPlayer.loadVideoById) { onReadyCb(); return; }
   ytPlayer = new YT.Player('ytPlayer', {
-    height: '1', width: '1',
-    playerVars: { autoplay: 1, controls: 0, rel: 0 },
+    height: '45',
+    width: '80',
+    playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1 },
     events: { onReady: () => onReadyCb(), onStateChange: onYtStateChange }
   });
 }
@@ -1857,22 +1858,20 @@ function ytPlayTrack() {
   const videoId = getVideoId(ytPlaylist[ytIndex]);
   if (!videoId) return;
 
-  // Сброс UI
   document.getElementById('ytTrackTitle').textContent  = `Трек ${ytIndex + 1} / ${ytPlaylist.length}`;
   document.getElementById('ytTrackAuthor').textContent = '...';
-  document.getElementById('ytThumbImg').src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-  document.getElementById('ytCurrent').textContent  = '0:00';
-  document.getElementById('ytDuration').textContent = '0:00';
-  document.getElementById('ytProgress').style.width = '0%';
+  document.getElementById('ytCurrent').textContent     = '0:00';
+  document.getElementById('ytDuration').textContent    = '0:00';
+  document.getElementById('ytProgress').style.width   = '0%';
 
   if (ytPlayer && ytPlayer.loadVideoById) {
     ytPlayer.loadVideoById(videoId);
-    // Пробуем получить название через oEmbed (не требует API ключа)
+    // Название через oEmbed (без API ключа)
     fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
       .then(r => r.json())
       .then(d => {
-        document.getElementById('ytTrackTitle').textContent  = d.title        || `Трек ${ytIndex + 1}`;
-        document.getElementById('ytTrackAuthor').textContent = d.author_name  || '—';
+        document.getElementById('ytTrackTitle').textContent  = d.title       || `Трек ${ytIndex + 1}`;
+        document.getElementById('ytTrackAuthor').textContent = d.author_name || '—';
       }).catch(() => {});
   }
 }
