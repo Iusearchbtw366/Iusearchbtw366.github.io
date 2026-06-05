@@ -449,13 +449,12 @@ button, input { font: inherit; }
   flex-direction: column;
 }
 
-/* Внутренний контейнер — прижимает сообщения ко дну */
+.messages-spacer { flex: 1; }
+
 .messages-inner {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 100%;
-  justify-content: flex-end;
 }
 
 .msg {
@@ -853,7 +852,7 @@ button, input { font: inherit; }
         <div class="chat-sub" data-i18n="chatSub">Персонаж • Онлайн</div>
       </div>
     </div>
-    <div class="messages" id="messages"><div class="messages-inner" id="messagesInner"></div></div>
+    <div class="messages" id="messages"><div class="messages-spacer"></div><div class="messages-inner" id="messagesInner"></div></div>
     <!-- YouTube player bar -->
     <div id="ytBar" style="display:none;padding:10px 14px 8px;border-top:1px solid var(--line);background:rgba(255,255,255,.02)">
       <!-- Верхняя строка: превью (реальный iframe) + инфо + кнопки -->
@@ -876,7 +875,7 @@ button, input { font: inherit; }
         </div>
       </div>
       <!-- Прогресс-бар с перемоткой -->
-      <div style="display:flex;align-items:center;gap:8px">
+      <div id="ytSeekRow" style="display:flex;align-items:center;gap:8px">
         <span id="ytCurrent" style="font-size:11px;color:var(--muted);min-width:36px;text-align:right;font-variant-numeric:tabular-nums">0:00</span>
         <div id="ytSeekWrap" onclick="ytSeek(event)" style="flex:1;height:4px;background:rgba(255,255,255,.1);border-radius:99px;cursor:pointer;position:relative">
           <div id="ytProgress" style="height:100%;width:0%;background:linear-gradient(90deg,#7c5cff,#4ea2ff);border-radius:99px;pointer-events:none"></div>
@@ -1554,8 +1553,12 @@ function openChat(name) {
 }
 
 function closeChat() {
+  ytFadeOut(() => {
+    document.getElementById('ytBar').style.display = 'none';
+  });
   document.getElementById('chatView').style.display = 'none';
   document.getElementById('mainView').style.display = 'grid';
+  currentSessionId = null;
 }
 
 /* ────────────────────────────────────────
@@ -1618,16 +1621,18 @@ async function openChatSession(sessionId, name) {
     msgs.innerHTML = '';
     if (!data.history.length) {
       addMessage('bot', '*Мир ждёт тебя. Опиши своё действие...*');
-      return;
+    } else {
+      data.history.forEach(msg => {
+        if (msg.role === 'assistant') {
+          const m = msg.content.match(/<response>([\s\S]*?)<\/response>/);
+          if (m) { try { addBotResponse(JSON.parse(m[1]).lines); } catch(e){} }
+        } else {
+          addMessage('user', msg.content.replace(/^USER MESSAGE:\s*/, ''));
+        }
+      });
     }
-    data.history.forEach(msg => {
-      if (msg.role === 'assistant') {
-        const m = msg.content.match(/<response>([\s\S]*?)<\/response>/);
-        if (m) { try { addBotResponse(JSON.parse(m[1]).lines); } catch(e){} }
-      } else {
-        addMessage('user', msg.content.replace(/^USER MESSAGE:\s*/, ''));
-      }
-    });
+    // Восстанавливаем музыку сессии если была
+    if (sessionMusicMap[sessionId]) loadYoutube(sessionMusicMap[sessionId]);
   } catch(e) {
     msgs.innerHTML = '';
     addMessage('bot', '❌ Не удалось загрузить историю');
@@ -1782,11 +1787,12 @@ function removeTyping(id) {
 /* ────────────────────────────────────────
    YOUTUBE PLAYER
 ──────────────────────────────────────── */
-let ytPlayer   = null;
-let ytPlaylist = [];
-let ytIndex    = 0;
-let ytReady    = false;
-let ytTimer    = null;
+let ytPlayer      = null;
+let ytPlaylist    = [];
+let ytIndex       = 0;
+let ytReady       = false;
+let ytTimer       = null;
+const sessionMusicMap = {};
 
 function getVideoId(url) {
   try { return new URLSearchParams(new URL(url).search).get('v'); }
@@ -1794,7 +1800,7 @@ function getVideoId(url) {
 }
 
 function fmtTime(sec) {
-  if (!sec || isNaN(sec)) return '0:00';
+  if (!sec || !isFinite(sec) || isNaN(sec)) return '0:00';
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = Math.floor(sec % 60);
@@ -1802,13 +1808,38 @@ function fmtTime(sec) {
   return `${m}:${String(s).padStart(2,'0')}`;
 }
 
+function ytFadeIn() {
+  if (!ytPlayer || !ytPlayer.setVolume) return;
+  ytPlayer.setVolume(0);
+  let v = 0;
+  const t = setInterval(() => {
+    v = Math.min(100, v + 10);
+    ytPlayer.setVolume(v);
+    if (v >= 100) clearInterval(t);
+  }, 60);
+}
+
+function ytFadeOut(cb) {
+  if (!ytPlayer || !ytPlayer.getPlayerState) { if (cb) cb(); return; }
+  let v = 100;
+  try { v = ytPlayer.getVolume(); } catch(e) {}
+  const t = setInterval(() => {
+    v = Math.max(0, v - 10);
+    try { ytPlayer.setVolume(v); } catch(e) {}
+    if (v <= 0) {
+      clearInterval(t);
+      try { ytPlayer.stopVideo(); ytPlayer.setVolume(100); } catch(e) {}
+      if (cb) cb();
+    }
+  }, 60);
+}
+
 window.onYouTubeIframeAPIReady = function() { ytReady = true; };
 
 function initYtPlayer(onReadyCb) {
   if (ytPlayer && ytPlayer.loadVideoById) { onReadyCb(); return; }
   ytPlayer = new YT.Player('ytPlayer', {
-    height: '45',
-    width: '80',
+    height: '45', width: '80',
     playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1 },
     events: { onReady: () => onReadyCb(), onStateChange: onYtStateChange }
   });
@@ -1818,10 +1849,10 @@ function onYtStateChange(e) {
   const btn = document.getElementById('ytPlayBtn');
   if (!btn) return;
   if (e.data === YT.PlayerState.PLAYING) {
-    btn.textContent = '⏸';
+    btn.textContent = '\u23F8';
     startProgressTimer();
   } else {
-    btn.textContent = '▶';
+    btn.textContent = '\u25B6';
     if (e.data === YT.PlayerState.ENDED) ytNext();
   }
 }
@@ -1830,48 +1861,53 @@ function startProgressTimer() {
   clearInterval(ytTimer);
   ytTimer = setInterval(() => {
     if (!ytPlayer || !ytPlayer.getDuration) return;
-    const cur = ytPlayer.getCurrentTime() || 0;
-    const dur = ytPlayer.getDuration()    || 0;
-    const pct = dur > 0 ? (cur / dur * 100) : 0;
-    const prog = document.getElementById('ytProgress');
-    const wrap = document.getElementById('ytSeekWrap');
-    const dot  = document.getElementById('ytDot');
-    if (prog) prog.style.width = pct + '%';
-    if (wrap) wrap.style.setProperty('--p', pct + '%');
-    if (dot)  dot.style.setProperty('right', 'calc(100% - ' + pct + '%)');
-    const el = document.getElementById('ytCurrent');
-    const dl = document.getElementById('ytDuration');
-    if (el) el.textContent = fmtTime(cur);
-    if (dl) dl.textContent = fmtTime(dur);
+    const cur     = ytPlayer.getCurrentTime() || 0;
+    const dur     = ytPlayer.getDuration()    || 0;
+    const isLive  = !isFinite(dur) || dur > 10800;
+    const seekRow = document.getElementById('ytSeekRow');
+    if (seekRow) seekRow.style.display = isLive ? 'none' : 'flex';
+    if (!isLive) {
+      const pct  = dur > 0 ? (cur / dur * 100) : 0;
+      const prog = document.getElementById('ytProgress');
+      const wrap = document.getElementById('ytSeekWrap');
+      const dot  = document.getElementById('ytDot');
+      if (prog) prog.style.width = pct + '%';
+      if (wrap) wrap.style.setProperty('--p', pct + '%');
+      if (dot)  dot.style.setProperty('right', 'calc(100% - ' + pct + '%)');
+      const el = document.getElementById('ytCurrent');
+      const dl = document.getElementById('ytDuration');
+      if (el) el.textContent = fmtTime(cur);
+      if (dl) dl.textContent = fmtTime(dur);
+    }
   }, 500);
 }
 
 function loadYoutube(urls) {
   if (!urls || !urls.length) return;
   ytPlaylist = urls; ytIndex = 0;
+  if (currentSessionId) sessionMusicMap[currentSessionId] = urls;
   document.getElementById('ytBar').style.display = 'block';
-  if (ytReady) initYtPlayer(() => ytPlayTrack());
+  if (ytReady) initYtPlayer(() => { ytPlayTrack(); ytFadeIn(); });
 }
 
 function ytPlayTrack() {
   if (!ytPlaylist.length) return;
   const videoId = getVideoId(ytPlaylist[ytIndex]);
   if (!videoId) return;
-
-  document.getElementById('ytTrackTitle').textContent  = `Трек ${ytIndex + 1} / ${ytPlaylist.length}`;
+  document.getElementById('ytTrackTitle').textContent  = `\u0422\u0440\u0435\u043A ${ytIndex + 1} / ${ytPlaylist.length}`;
   document.getElementById('ytTrackAuthor').textContent = '...';
   document.getElementById('ytCurrent').textContent     = '0:00';
   document.getElementById('ytDuration').textContent    = '0:00';
-  document.getElementById('ytProgress').style.width   = '0%';
-
+  document.getElementById('ytProgress').style.width    = '0%';
+  const seekRow = document.getElementById('ytSeekRow');
+  if (seekRow) seekRow.style.display = 'flex';
   if (ytPlayer && ytPlayer.loadVideoById) {
     ytPlayer.loadVideoById(videoId);
-    // Название через oEmbed (без API ключа)
     fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
       .then(r => r.json())
       .then(d => {
-        document.getElementById('ytTrackTitle').textContent  = d.title       || `Трек ${ytIndex + 1}`;
-        document.getElementById('ytTrackAuthor').textContent = d.author_name || '—';
+        document.getElementById('ytTrackTitle').textContent  = d.title       || `\u0422\u0440\u0435\u043A ${ytIndex + 1}`;
+        document.getElementById('ytTrackAuthor').textContent = d.author_name || '\u2014';
       }).catch(() => {});
   }
 }
@@ -1884,26 +1920,19 @@ function ytSeek(e) {
   ytPlayer.seekTo(ytPlayer.getDuration() * pct, true);
 }
 
-// Показываем точку при наведении на seekbar
 document.addEventListener('DOMContentLoaded', () => {
   const wrap = document.getElementById('ytSeekWrap');
   if (!wrap) return;
-  wrap.addEventListener('mouseenter', () => {
-    document.getElementById('ytDot').style.opacity = '1';
-  });
-  wrap.addEventListener('mouseleave', () => {
-    document.getElementById('ytDot').style.opacity = '0';
-  });
+  wrap.addEventListener('mouseenter', () => { document.getElementById('ytDot').style.opacity = '1'; });
+  wrap.addEventListener('mouseleave', () => { document.getElementById('ytDot').style.opacity = '0'; });
 });
 
 function ytPrev() {
-  ytIndex = (ytIndex - 1 + ytPlaylist.length) % ytPlaylist.length;
-  ytPlayTrack();
+  ytFadeOut(() => { ytIndex = (ytIndex - 1 + ytPlaylist.length) % ytPlaylist.length; ytPlayTrack(); ytFadeIn(); });
 }
 
 function ytNext() {
-  ytIndex = (ytIndex + 1) % ytPlaylist.length;
-  ytPlayTrack();
+  ytFadeOut(() => { ytIndex = (ytIndex + 1) % ytPlaylist.length; ytPlayTrack(); ytFadeIn(); });
 }
 
 function ytToggle() {
@@ -1914,12 +1943,12 @@ function ytToggle() {
 }
 
 function ytStop() {
-  if (!ytPlayer) return;
   clearInterval(ytTimer);
-  ytPlayer.stopVideo();
-  document.getElementById('ytPlayBtn').textContent = '▶';
-  document.getElementById('ytProgress').style.width = '0%';
-  document.getElementById('ytCurrent').textContent  = '0:00';
+  ytFadeOut(() => {
+    document.getElementById('ytPlayBtn').textContent  = '\u25B6';
+    document.getElementById('ytProgress').style.width = '0%';
+    document.getElementById('ytCurrent').textContent  = '0:00';
+  });
 }
 
 applyLang();
